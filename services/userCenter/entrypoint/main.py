@@ -9,6 +9,7 @@ import asyncio  # noqa
 
 import gunicorn.app.base  # type:ignore
 from aerich import Command  # type:ignore
+
 from conf.config import ConnectionNameEnum, local_configs  # noqa
 
 """FastAPI"""

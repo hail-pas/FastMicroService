@@ -9,7 +9,6 @@ RequestLimitedMsg = "请求频率限制"
 InternalServerErrorMsg = "服务器内部错误"
 
 
-
 # validations error msg
 ValidateFailedMsg = "%s校验不通过"
 

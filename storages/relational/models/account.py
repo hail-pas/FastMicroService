@@ -1,11 +1,10 @@
-from common.regex import EMAIL_REGEX
-from common.tortoise.validators import RegexValidator
-from conf.config import ConnectionNameEnum
 from tortoise import fields, models
+
+from conf.config import ConnectionNameEnum
+from common.regex import EMAIL_REGEX
 from common.utils import get_enum_field_display
-from common.tortoise.models.base import (
-    NotDeletedManager,
-)
+from common.tortoise.validators import RegexValidator
+from common.tortoise.models.base import NotDeletedManager
 
 
 class Company(models.Model):

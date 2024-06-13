@@ -5,11 +5,9 @@ from collections.abc import AsyncGenerator
 from loguru import logger
 from fastapi import Depends, FastAPI
 from tortoise import Tortoise
-from conf.config import LocalConfig, local_configs
 
 # from fastapi_cache import FastAPICache
 from burnish_sdk_py.redis import AsyncRedisUtil
-from common.constant.tags import TagsEnum
 from burnish_sdk_py.dependencies import global_request_header_required
 from burnish_sdk_py.common.loguru import init_loguru
 
@@ -23,6 +21,9 @@ from burnish_sdk_py.common.fastapi import (
 )
 from burnish_sdk_py.common.responses import AesResponse
 from burnish_sdk_py.common.exceptions import setup_exception_handlers
+
+from conf.config import LocalConfig, local_configs
+from common.constant.tags import TagsEnum
 
 init_loguru()
 

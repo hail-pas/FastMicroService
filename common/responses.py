@@ -2,7 +2,6 @@
 from math import ceil
 from typing import Generic, TypeVar
 from datetime import datetime
-from collections.abc import Sequence
 
 import orjson
 from pydantic import Field, BaseModel, validator, root_validator
@@ -121,5 +120,3 @@ def generate_page_info(total_count: int, pager: Pager) -> PageInfo:
         size=pager.limit,
         page=pager.offset // pager.limit + 1,
     )
-
-

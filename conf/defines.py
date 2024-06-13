@@ -1,78 +1,91 @@
 import os
 import enum
 import multiprocessing
-from typing import Any, Literal, Optional
+from typing import Self
 from pathlib import Path
 from zoneinfo import ZoneInfo
-from functools import lru_cache
 
-import orjson
-import tomlkit
-from pydantic import BaseModel, BaseSettings, validator, root_validator
+from pydantic import HttpUrl, MySQLDsn, RedisDsn, BaseModel, ConfigDict, model_validator
 from redis.retry import Retry
 from redis.asyncio import ConnectionPool
 from redis.backoff import NoBackoff
-from pydantic.env_settings import SettingsSourceCallable
+
+from common.types import StrEnumMore
 
 
 class EnvironmentEnum(str, enum.Enum):
-    development = "Development"
-    test = "Test"
-    production = "Production"
+    development = "development"
+    test = "test"
+    production = "production"
 
 
 ENVIRONMENT = os.environ.get(
     "environment",  # noqa
-    EnvironmentEnum.development.value.capitalize(),
+    EnvironmentEnum.development.value,
 )
-
-CONFIG_FILE_EXTENSION = "json"
-
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
-class HostAndPort(BaseModel):
-    HOST: str
-    PORT: int | None
+class ConnectionNameEnum(StrEnumMore):
+    """数据库连接名称"""
+
+    default = ("default", "默认连接")
+    user_center = ("user_center", "用户中心连接")
+    asset_center = ("asset_center", "资产中心连接")
 
 
-class Relational(HostAndPort):
-    USERNAME: str
-    PASSWORD: str
-    DB: str
-    TYPE: Literal["postgresql", "mysql"] = "postgresql"
-    TIMEZONE: str | None = "Asia/Shanghai"
+VersionFilePath: str = f"{BASE_DIR}/storages/relational/migrate/versions/"
+
+
+class Relational(BaseModel):
+    user_center: MySQLDsn
+    asset_center: MySQLDsn
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     @property
-    def zone(self) -> ZoneInfo:
-        return ZoneInfo(self.TIMEZONE or "Asia/Shanghai")
+    def timezone(self) -> ZoneInfo:
+        return ZoneInfo("Asia/Shanghai")
 
     @property
-    def url(self) -> str:
-        pkg = "asyncpg"
-        if self.TYPE == "mysql":
-            pkg = "aiomysql"
-        return f"{self.TYPE}+{pkg}://{self.USERNAME}:{self.PASSWORD}@{self.HOST}:{self.PORT}/{self.DB}"  # noqa
+    def tortoise_orm_config(self) -> dict:
+        return {
+            "connections": {
+                ConnectionNameEnum.user_center.value: self.user_center,
+                ConnectionNameEnum.asset_center.value: self.asset_center,
+            },
+            "apps": {
+                ConnectionNameEnum.user_center.value: {
+                    "models": [
+                        "aerich.models",
+                        "storages.relational.models.account",
+                    ],
+                    "default_connection": ConnectionNameEnum.user_center.value,
+                },
+                ConnectionNameEnum.asset_center.value: {
+                    "models": [
+                        "aerich.models",
+                        "storages.relational.models.vehicle",
+                    ],
+                    "default_connection": ConnectionNameEnum.asset_center.value,
+                },
+            },
+            # "use_tz": True,   # Will Always Use UTC as Default Timezone
+            "timezone": "Asia/Shanghai",
+            # 'routers': ['path.router1', 'path.router2'],
+        }
 
 
-class Redis(HostAndPort):
-    USERNAME: str | None = None
-    PASSWORD: str | None = None
-    DB: int = 0
-    MAX_CONNECTIONS: int = 20
+class Redis(BaseModel):
+    user_center: RedisDsn
+    asset_center: RedisDsn
+    max_connections: int = 10
 
-
-class UserCenterRedis(Redis):
-    @property
-    def connection_pool(self) -> ConnectionPool:
-        return ConnectionPool(
-            host=self.HOST,
-            port=self.PORT,
-            db=self.DB,
-            username=self.USERNAME,
-            password=self.PASSWORD,
-            max_connections=self.MAX_CONNECTIONS,
+    def connection_pool(self, service: ConnectionNameEnum) -> ConnectionPool:
+        return ConnectionPool.from_url(
+            url=getattr(self, service.value),
+            max_connections=self.max_connections,
             decode_responses=True,
             encoding_errors="strict",
             retry=Retry(NoBackoff(), retries=5),
@@ -80,159 +93,83 @@ class UserCenterRedis(Redis):
         )
 
 
-class Oss(BaseModel):
-    ACCESS_KEY_ID: str
-    ACCESS_KEY_SECRET: str
-    ENDPOINT: str
-    EXTERNAL_ENDPOINT: str | None = None
-    BUCKET_NAME: str
-    CNAME: str | None = None  # 自定义域名绑定
-    BUCKET_ACL_TYPE: str | None = "private"
-    EXPIRE_TIME: int = 60
-    MEDIA_LOCATION: str | None = None
-    STATIC_LOCATION: str | None = None
-
-
 class CorsConfig(BaseModel):
-    ALLOW_ORIGIN: list[str] = ["*"]
-    ALLOW_CREDENTIAL: bool = True
-    ALLOW_METHODS: list[str] = ["*"]
-    ALLOW_HEADERS: list[str] = ["*"]
-    EXPOSE_HEADERS: list[str] = []
+    allow_origin: list[str] = ["*"]
+    allow_credential: bool = True
+    allow_methods: list[str] = ["*"]
+    allow_headers: list[str] = ["*"]
+    expose_headers: list[str] = []
 
     @property
     def headers(self) -> dict:
         result = {
-            "Access-Control-Allow-Origin": ",".join(self.ALLOW_ORIGIN)
-            if "*" not in self.ALLOW_ORIGIN
-            else "*",
+            "Access-Control-Allow-Origin": ",".join(self.allow_origin) if "*" not in self.allow_origin else "*",
             "Access-Control-Allow-Credentials": str(
-                self.ALLOW_CREDENTIAL,
+                self.allow_credential,
             ).lower(),
-            "Access-Control-Expose-Headers": ",".join(self.ALLOW_HEADERS)
-            if "*" not in self.ALLOW_HEADERS
-            else "*",
-            "Access-Control-Allow-Methods": ",".join(self.ALLOW_METHODS)
-            if "*" not in self.ALLOW_METHODS
-            else "*",
+            "Access-Control-Expose-Headers": ",".join(self.allow_headers) if "*" not in self.allow_headers else "*",
+            "Access-Control-Allow-Methods": ",".join(self.allow_methods) if "*" not in self.allow_methods else "*",
         }
-        if self.EXPOSE_HEADERS:
+        if self.expose_headers:
             result["Access-Control-Expose-Headers"] = ", ".join(
-                self.EXPOSE_HEADERS,
+                self.expose_headers,
             )
 
         return result
 
 
-class Server(HostAndPort):
-    REQUEST_SCHEME: str = "https"
-    CORS: CorsConfig = CorsConfig()
-    WORKERS_NUM: int = (
-        multiprocessing.cpu_count() * int(os.getenv("WORKERS_PER_CORE", "2"))
-        + 1
-    )
-    ALLOW_HOSTS: list = ["*"]
-    STATIC_PATH: str = "/static"
-    STATIC_DIR: str = f"{str(BASE_DIR.absolute())}/static"
-    DOCS_URL: str = "/docs"
-    REDOC_URL: str = "/redoc"
-    OPENAPI_URL: str = "/openapi.json"
-    REDIRECT_OPENAPI_URL_PREFIX: str = ""
-
 class ProfilingConfig(BaseModel):
-    SECRET: str
-    INTERVAL: float = 0.001
+    secret: str
+    interval: float = 0.001
+
+
+class ServiceStringConfig(BaseModel):
+    user_center: str
+    asset_center: str
+
+
+class Server(BaseModel):
+    address: HttpUrl = HttpUrl("http://0.0.0.0:8000")
+    cors: CorsConfig = CorsConfig()
+    worker_number: int = multiprocessing.cpu_count() * int(os.getenv("WORKERS_PER_CORE", "2")) + 1
+    profiling: ProfilingConfig | None = None
+    allow_hosts: list = ["*"]
+    static_path: str = "/static"
+    docs_uri: str = "/docs"
+    redoc_uri: str = "/redoc"
+    openapi_uri: str = "/openapi.json"
+
+    redirect_openapi_prefix: ServiceStringConfig = ServiceStringConfig(
+        user_center="/user",
+        asset_center="/asset",
+    )
 
 
 class Project(BaseModel):
-    UNIQUE_CODE: str  # 项目唯一标识，用于redis前缀
-    NAME: str = "FastService"
-    DESCRIPTION: str = "FastService"
-    VERSION: str = "v1"
-    DEBUG: bool = False
-    ENVIRONMENT: str = EnvironmentEnum.production.value
-    LOG_DIR: str = "logs/"
-    SENTRY_DSN: str | None = None
-    SWAGGER_SERVERS: list[dict] = []
+    unique_code: ServiceStringConfig = ServiceStringConfig(
+        user_center="UserCenter",
+        asset_center="AssetCenter",
+    )
+    name: str = "FastService"
+    description: str = "FastService"
+    debug: bool = False
+    environment: EnvironmentEnum = EnvironmentEnum.production
+    log_dir: str = "logs/"
+    sentry_dsn: HttpUrl | None = None
 
-    @root_validator
-    def check_debug_options(cls, values: dict) -> dict:
-        env_options = [e.value for e in EnvironmentEnum]
-        env = values["ENVIRONMENT"]
-        debug = values["DEBUG"]
-        assert (
-            env in env_options
-        ), f'Illegal environment config value, options: {",".join(env_options)}'
+    class SwaggerServerConfig(BaseModel):
+        url: HttpUrl
+        description: str
+
+    swagger_servers: list[SwaggerServerConfig] = []
+
+    @model_validator(mode="after")
+    def check_debug_options(self) -> Self:
         assert not (
-            debug and env == EnvironmentEnum.production.value
+            self.debug and self.environment == EnvironmentEnum.production
         ), "Production cannot set with debug enabled"
-        return values
+        return self
 
-    # @property
-    # def BASE_DIR(self) -> Path:
-    #     return BASE_DIR
-
-
-class Hbase(BaseModel):
-    SERVERS: list = []
-
-
-class Kafka(BaseModel):
-    SERVERS: list = []
-
-
-class Jwt(BaseModel):
-    SECRET: str
-    # AUTH_HEADER_PREFIX: str = "JWT"
-    ISSUER: str
-    SCENE: list[str] = ["General"]
-    EXPIRATION_DELTA_MINUTES: int = 432000
-    REFRESH_EXPIRATION_DELTA_DELTA_MINUTES: int = 4320
-
-    @validator("SECRET")
-    def read_secret(cls, v: str) -> str:
-        try:
-            return Path(v).read_text()
-        except Exception:
-            return v
-
-
-class BaseLocalConfig(BaseSettings):
-    """全部的配置信息."""
-
-    class Config:
-        case_sensitive = True
-        env_file_encoding = "utf-8"
-
-@lru_cache
-def create_local_configs(
-    setting_cls: type[BaseSettings],
-    config_file: Path,
-) -> BaseSettings:
-    """create json file base setting object"""
-
-    class _Settings(setting_cls):  # type: ignore
-        class Config(getattr(setting_cls, "Config", object)):  # type: ignore
-            @classmethod
-            def customise_sources(
-                cls,
-                init_settings: SettingsSourceCallable,
-                env_settings: SettingsSourceCallable,
-                file_secret_settings: SettingsSourceCallable,
-            ) -> tuple[SettingsSourceCallable, ...]:
-                def json_config_settings_source(
-                    settings: BaseSettings,
-                ) -> dict[str, Any]:
-                    encoding = settings.__config__.env_file_encoding
-                    return orjson.loads(  # type: ignore
-                        config_file.read_text(encoding),
-                    )
-
-                return (
-                    init_settings,
-                    json_config_settings_source,
-                    env_settings,
-                    file_secret_settings,
-                )
-
-    return _Settings()
+    @property
+    def base_dir(self) -> Path:
+        return BASE_DIR

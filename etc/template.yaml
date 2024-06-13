@@ -1,0 +1,39 @@
+relational:
+  user_center: "mysql://root:root@localhost:3306/user_center"
+  asset_center: "mysql://root:root@localhost:3306/asset_center"
+
+redis:
+  user_center: "redis://localhost:6379/0"
+  asset_center: "redis://localhost:6379/0"
+  max_connections: 10
+
+server:
+  address: "http://0.0.0.0:8000"
+  cors:
+    allow_origin: ["*"]
+    allow_credential: true
+    allow_methods: ["*"]
+    allow_headers: ["*"]
+    expose_headers: []
+  worker_number: 4
+  profiling: null
+  allow_hosts: ["*"]
+  static_path: "/static"
+  docs_uri: "/docs"
+  redoc_uri: "/redoc"
+  openapi_uri: "/openapi.json"
+  redirect_openapi_prefix:
+    user_center: "/user"
+    asset_center: "/asset"
+
+project:
+  unique_code:
+    user_center: "UserCenter"
+    asset_center: "AssetCenter"
+  name: "FastService"
+  description: "FastService"
+  debug: True
+  environment: "development"
+  log_dir: "logs/"
+  sentry_dsn: null
+  swagger_servers: []

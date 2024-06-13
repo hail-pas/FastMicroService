@@ -31,16 +31,12 @@ def generate_random_string(
     """生成任意长度字符串."""
     if excludes is None:
         excludes = []
-    all_char = (
-        string.digits if all_digits else string.ascii_letters + string.digits
-    )
+    all_char = string.digits if all_digits else string.ascii_letters + string.digits
     if excludes:
         for char in excludes:
             all_char = all_char.replace(char, "")
     # return "".join(random.sample(all_char, length))
-    return "".join(
-        random.SystemRandom().choice(all_char) for _ in range(length)
-    )
+    return "".join(random.SystemRandom().choice(all_char) for _ in range(length))
 
 
 def get_client_ip(request: Request) -> str | None:
@@ -317,9 +313,7 @@ def get_enum_field_display(self, field_name: str):
     value = getattr(self, field_name)
     if value is None:
         return value
-    return self._meta.fields_map.get(field_name).enum_type.dict.get(  # type: ignore
-        value.value
-    )
+    return self._meta.fields_map.get(field_name).enum_type.dict.get(value.value)  # type: ignore
 
 
 def gte_all_uris(
@@ -395,13 +389,9 @@ def swap_uuid_sections(uuid_obj: uuid.UUID, recovery: bool = False) -> bytes:
     """
     uuid_bytes = uuid_obj.bytes
     if recovery:
-        swapped_uuid_bytes = (
-            uuid_bytes[4:8] + uuid_bytes[2:4] + uuid_bytes[:2] + uuid_bytes[8:]
-        )
+        swapped_uuid_bytes = uuid_bytes[4:8] + uuid_bytes[2:4] + uuid_bytes[:2] + uuid_bytes[8:]
     else:
-        swapped_uuid_bytes = (
-            uuid_bytes[6:8] + uuid_bytes[4:6] + uuid_bytes[:4] + uuid_bytes[8:]
-        )
+        swapped_uuid_bytes = uuid_bytes[6:8] + uuid_bytes[4:6] + uuid_bytes[:4] + uuid_bytes[8:]
     return swapped_uuid_bytes
 
 
@@ -460,61 +450,17 @@ def wgs84_to_gcj02(lng: float, lat: float) -> tuple[float, float]:
     ee = 0.00669342162296594323  # 偏心率平方
 
     def _transformlat(lng, lat):
-        ret = (
-            -100.0
-            + 2.0 * lng
-            + 3.0 * lat
-            + 0.2 * lat * lat
-            + 0.1 * lng * lat
-            + 0.2 * math.sqrt(math.fabs(lng))
-        )
-        ret += (
-            (20.0 * math.sin(6.0 * lng * PI) + 20.0 * math.sin(2.0 * lng * PI))
-            * 2.0
-            / 3.0
-        )
-        ret += (
-            (20.0 * math.sin(lat * PI) + 40.0 * math.sin(lat / 3.0 * PI))
-            * 2.0
-            / 3.0
-        )
-        ret += (
-            (
-                160.0 * math.sin(lat / 12.0 * PI)
-                + 320 * math.sin(lat * PI / 30.0)
-            )
-            * 2.0
-            / 3.0
-        )
+        ret = -100.0 + 2.0 * lng + 3.0 * lat + 0.2 * lat * lat + 0.1 * lng * lat + 0.2 * math.sqrt(math.fabs(lng))
+        ret += (20.0 * math.sin(6.0 * lng * PI) + 20.0 * math.sin(2.0 * lng * PI)) * 2.0 / 3.0
+        ret += (20.0 * math.sin(lat * PI) + 40.0 * math.sin(lat / 3.0 * PI)) * 2.0 / 3.0
+        ret += (160.0 * math.sin(lat / 12.0 * PI) + 320 * math.sin(lat * PI / 30.0)) * 2.0 / 3.0
         return ret
 
     def _transformlng(lng, lat):
-        ret = (
-            300.0
-            + lng
-            + 2.0 * lat
-            + 0.1 * lng * lng
-            + 0.1 * lng * lat
-            + 0.1 * math.sqrt(math.fabs(lng))
-        )
-        ret += (
-            (20.0 * math.sin(6.0 * lng * PI) + 20.0 * math.sin(2.0 * lng * PI))
-            * 2.0
-            / 3.0
-        )
-        ret += (
-            (20.0 * math.sin(lng * PI) + 40.0 * math.sin(lng / 3.0 * PI))
-            * 2.0
-            / 3.0
-        )
-        ret += (
-            (
-                150.0 * math.sin(lng / 12.0 * PI)
-                + 300.0 * math.sin(lng / 30.0 * PI)
-            )
-            * 2.0
-            / 3.0
-        )
+        ret = 300.0 + lng + 2.0 * lat + 0.1 * lng * lng + 0.1 * lng * lat + 0.1 * math.sqrt(math.fabs(lng))
+        ret += (20.0 * math.sin(6.0 * lng * PI) + 20.0 * math.sin(2.0 * lng * PI)) * 2.0 / 3.0
+        ret += (20.0 * math.sin(lng * PI) + 40.0 * math.sin(lng / 3.0 * PI)) * 2.0 / 3.0
+        ret += (150.0 * math.sin(lng / 12.0 * PI) + 300.0 * math.sin(lng / 30.0 * PI)) * 2.0 / 3.0
         return ret
 
     if not lng and not lat:

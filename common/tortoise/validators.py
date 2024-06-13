@@ -67,9 +67,7 @@ class MaxLengthValidator(validators.MaxLengthValidator):
 
             raise ValidationError(
                 error_type="type_error.none.not_allowed",
-                error_message_template=ValidationErrorMsgTemplates[
-                    "type_error.none.not_allowed"
-                ],
+                error_message_template=ValidationErrorMsgTemplates["type_error.none.not_allowed"],
                 ctx={
                     "value": value,
                     **self.default_ctx,
@@ -115,9 +113,7 @@ class MinLengthValidator(validators.MinLengthValidator):
 
             raise ValidationError(
                 error_type="type_error.none.not_allowed",
-                error_message_template=ValidationErrorMsgTemplates[
-                    "type_error.none.not_allowed"
-                ],
+                error_message_template=ValidationErrorMsgTemplates["type_error.none.not_allowed"],
                 ctx={
                     "value": value,
                     **self.default_ctx,
@@ -157,9 +153,7 @@ class MaxValueValidator(validators.MaxValueValidator):
         if not isinstance(value, int | float | Decimal):
             raise ValidationError(
                 error_type="type_error",
-                error_message_template=ValidationErrorMsgTemplates[
-                    "type_error"
-                ],
+                error_message_template=ValidationErrorMsgTemplates["type_error"],
                 ctx={
                     "value": value,
                     **self.default_ctx,
@@ -199,9 +193,7 @@ class MinValueValidator(validators.MinValueValidator):
         if not isinstance(value, int | float | Decimal):
             raise ValidationError(
                 error_type="type_error",
-                error_message_template=ValidationErrorMsgTemplates[
-                    "type_error"
-                ],
+                error_message_template=ValidationErrorMsgTemplates["type_error"],
                 ctx={
                     "value": value,
                     **self.default_ctx,

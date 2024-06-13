@@ -225,11 +225,7 @@ class TimeField(fields.TimeField):
     ) -> datetime.time | datetime.timedelta | None:
         # Only do this if it is a Model instance, not class. Test for guaranteed instance var
         if hasattr(instance, "_saved_in_db") and (
-            self.auto_now
-            or (
-                self.auto_now_add
-                and getattr(instance, self.model_field_name) is None
-            )
+            self.auto_now or (self.auto_now_add and getattr(instance, self.model_field_name) is None)
         ):
             now = timezone.now().time()
             setattr(instance, self.model_field_name, now)

@@ -1,8 +1,9 @@
-from conf.config import local_configs
 from fastapi.middleware.gzip import GZipMiddleware
 from starlette.middleware.cors import CORSMiddleware
 from burnish_sdk_py.middlewares import context, operation_record
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
+
+from conf.config import local_configs
 from common.middlewares.operation_record import (
     opeartion_flag_getter,
     operation_record_sinker,

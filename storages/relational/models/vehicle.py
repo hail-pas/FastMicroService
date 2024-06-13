@@ -1,9 +1,7 @@
 from tortoise import fields
-from common.tortoise.models.base import (
-    BaseModel,
-)
 
 from conf.config import ConnectionNameEnum
+from common.tortoise.models.base import BaseModel
 
 
 class VehicleBrand(BaseModel):

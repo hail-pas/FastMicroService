@@ -99,9 +99,7 @@ class RequestProcessInfoPlugin(Plugin):
         request_start_timestamp = context.get(RequestStartTimestampPlugin.key)
         if not request_start_timestamp:
             raise RuntimeError("Cannot evaluate process time")
-        process_time = (
-            time.time() - float(request_start_timestamp)
-        ) * 1000  # ms
+        process_time = (time.time() - float(request_start_timestamp)) * 1000  # ms
         if isinstance(response, Response):
             response.headers[ResponseHeaderKeyEnum.process_time.value] = str(
                 process_time,

@@ -22,11 +22,7 @@ def optional(*fields) -> Callable[[pydantic.BaseModel], pydantic.BaseModel]:
             _cls.__fields__[field].required = False
         return _cls
 
-    if (
-        fields
-        and inspect.isclass(fields[0])
-        and issubclass(fields[0], pydantic.BaseModel)
-    ):
+    if fields and inspect.isclass(fields[0]) and issubclass(fields[0], pydantic.BaseModel):
         cls = fields[0]
         fields = cls.__fields__  # type: ignore
         return dec(cls)  # type: ignore
@@ -68,9 +64,7 @@ def as_form(cls: type[pydantic.BaseModel]) -> type[pydantic.BaseModel]:
             inspect.Parameter(
                 model_field.alias,
                 inspect.Parameter.POSITIONAL_ONLY,
-                default=Form(...)
-                if model_field.required
-                else Form(model_field.default),
+                default=Form(...) if model_field.required else Form(model_field.default),
                 annotation=model_field.outer_type_,
             ),
         )

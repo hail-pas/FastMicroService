@@ -6,10 +6,7 @@ import orjson
 from fastapi import FastAPI, WebSocket
 from pydantic import ValidationError as PydanticValidationError
 from fastapi.responses import HTMLResponse
-from fastapi.exceptions import (
-    RequestValidationError,
-    WebSocketRequestValidationError,
-)
+from fastapi.exceptions import RequestValidationError, WebSocketRequestValidationError
 from starlette.requests import Request
 from tortoise.exceptions import ValidationError as TortoiseValidationError
 from starlette.exceptions import HTTPException
@@ -150,9 +147,7 @@ def get_exc_field_msg(
             if model:
                 fields: dict = model.__fields__
                 if field_name in fields:
-                    field_name = (
-                        fields[field_name].field_info.description or field_name
-                    )
+                    field_name = fields[field_name].field_info.description or field_name
             ctx = first_error_info.get("ctx", {})
             msg = first_error_info["msg"]
             if error_type in ValidationErrorMsgTemplates:
@@ -264,8 +259,7 @@ roster: list[tuple[type[Exception], Callable[..., Any]]] = [
 
 def setup_exception_handlers(
     main_app: FastAPI,
-    custom_roster: list[tuple[type[Exception], Callable[..., Any]]]
-    | None = None,
+    custom_roster: list[tuple[type[Exception], Callable[..., Any]]] | None = None,
 ) -> None:
     custom_roster = custom_roster or []
     for exc, handler in roster + custom_roster:

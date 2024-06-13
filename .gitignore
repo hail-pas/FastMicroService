@@ -142,7 +142,7 @@ dmypy.json
 .pytype
 
 # 忽略 etc 文件夹下的所有文件
-etc/*.json
+etc/*.yaml
 
 # 但不忽略 template.yaml 文件
-!etc/template.json
+!etc/template.yaml

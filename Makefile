@@ -1,4 +1,4 @@
-DIRS = ./
+DIRS = ./conf ./common ./storages ./services
 export MYPYPATH=./
 # --disable-warnings
 help:

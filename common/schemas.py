@@ -1,4 +1,5 @@
-from pydantic import Field, BaseModel, PositiveInt, conint
+from pydantic import BaseModel, PositiveInt, conint
+
 
 class Pager(BaseModel):
     limit: PositiveInt = 10
