@@ -1,0 +1,66 @@
+{
+  "RELATIONAL": {
+    "HOST": "127.0.0.1",
+    "PORT": 3306,
+    "USERNAME": "root",
+    "DB": "burnish-user-cernter",
+    "PASSWORD": "root"
+  },
+  "REDIS": {
+    "HOST": "192.168.3.81",
+    "PORT": 6380,
+    "DB": 0,
+    "PASSWORD": "root"
+  },
+  "OSS": {
+    "ACCESS_KEY_ID": "",
+    "ACCESS_KEY_SECRET": "",
+    "ENDPOINT": "",
+    "BUCKET_NAME": "",
+    "BUCKET_ACL_TYPE": "private",
+    "EXPIRE_TIME": 300
+  },
+  "SERVER": {
+    "HOST": "0.0.0.0",
+    "PORT": 8000,
+    "REQUEST_SCHEME": "http"
+  },
+  "PROFILING": {
+    "SECRET": "",
+    "INTERVAL": 0.001
+  },
+  "PROJECT": {
+    "UNIQUE_CODE": "burnish-user-cernter",
+    "DEBUG": true,
+    "VERSION": "v0.1",
+    "ENVIRONMENT": "Development",
+    "NAME": "burnish-user-cernter",
+    "DESCRIPTION": "burnish-user-cernter",
+    "SWAGGER_SERVERS": [
+      {
+        "url": "http://test.example.com",
+        "description": "Test environment"
+      },
+      {
+          "url": "http://prod.example.com",
+          "description": "Production environment"
+      }
+    ]
+  },
+  "HBASE": {
+    "SERVERS": [
+      "192.168.3.75:9090"
+    ]
+  },
+  "KAFKA": {
+    "SERVERS": [
+    ]
+  },
+  "JWT": {
+    "SECRET": "",
+    "SIGN_SECRET": "",
+    "AUTH_HEADER_PREFIX": "JWT",
+    "EXPIRATION_DELTA_MINUTES": 432000,
+    "REFRESH_EXPIRATION_DELTA_DELTA_MINUTES": 4320
+  }
+}
