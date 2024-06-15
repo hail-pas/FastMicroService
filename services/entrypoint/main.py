@@ -1,17 +1,16 @@
 import sys
+import argparse
+import importlib
 from typing import Any
-
-from common.fastapi import ServiceApi
 
 sys.path.append(".")  # 将当前目录加入到环境变量中
 
 import asyncio  # noqa
 
 import gunicorn.app.base  # type:ignore
-from aerich import Command  # type:ignore
 
 from conf.config import local_configs  # noqa
-from conf.defines import VersionFilePath, ConnectionNameEnum  # noqa
+from common.fastapi import ServiceApi
 
 """FastAPI"""
 
@@ -56,18 +55,27 @@ def post_fork(server: Any, worker: Any) -> None:  # ruff: noqa
     pass
 
 
-async def run_migrations() -> None:
-    for connection_name in ConnectionNameEnum:
-        command = Command(
-            tortoise_config=local_configs.relational.tortoise_orm_config,
-            app=connection_name.value,
-            location=VersionFilePath,
-        )
-        await command.init()
-        await command.upgrade(run_in_transaction=True)
+def import_app(app_path: str) -> ServiceApi:
+    if ":" not in app_path:
+        raise ValueError("Invalid app_path format. It should be in the format'module:app'.")
+    module_name, app_name = app_path.split(":")
+    module = importlib.import_module(module_name)
+    app = getattr(module, app_name)
+    if not isinstance(app, ServiceApi):
+        raise ValueError(f"The app object must be an instance of FastAPI. Got: {type(app)}")
+    return app
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Run FastAPI application with Gunicorn.")
+    parser.add_argument(
+        "app_path",
+        help="The FastAPI app to run, in the format 'module:app'. For example: 'services.userCenter.entrypoint.factory:user_center_api'",
+    )
+    args = parser.parse_args()
+
+    app = import_app(args.app_path)
+
     # gunicorn core.factory:app
     # --workers 4
     # --worker-class uvicorn.workers.UvicornWorker
@@ -79,7 +87,9 @@ if __name__ == "__main__":
     # --logger-class core.loguru.GunicornLogger
     # --bind 0.0.0.0:80
     # import sys
-    asyncio.get_event_loop().run_until_complete(run_migrations())
+    if hasattr(app, "before_server_start"):
+        asyncio.get_event_loop().run_until_complete(app.before_server_start())
+
     options = {
         "bind": f"{local_configs.server.address.host}:{local_configs.server.address.port}",
         "workers": local_configs.server.worker_number,
@@ -95,6 +105,4 @@ if __name__ == "__main__":
         # "post_fork": "entrypoint.main.post_fork",
     }
 
-    from services.userCenter.entrypoint.factory import user_center_api
-
-    FastApiApplication(user_center_api, options).run()
+    FastApiApplication(app, options).run()

@@ -1,8 +1,7 @@
-from fastapi import Depends, APIRouter
+from fastapi import Depends
 
 from services.dependencies import FixedContentQueryChecker
-
-router = APIRouter()
+from services.userCenter.routers.v1.account import router
 
 checker = FixedContentQueryChecker("bar")
 

@@ -1,4 +1,5 @@
-from typing import Self
+from abc import ABC, abstractmethod
+from typing import Any, Self
 from inspect import isclass, isfunction
 from contextlib import asynccontextmanager
 from collections.abc import Callable, AsyncGenerator
@@ -13,13 +14,13 @@ from conf.config import LocalConfig
 from common.responses import AesResponse
 
 
-class ServiceApi(FastAPI):
+class ServiceApi(FastAPI, ABC):
     code: str
     settings: LocalConfig
 
     def __init__(self, code: str, settings: LocalConfig, **kwargs) -> None:
         super().__init__(**kwargs)
-        self.code = code
+        self.code = code.title()
         self.settings = settings
 
     def enable_sentry(self) -> None:
@@ -57,7 +58,7 @@ class ServiceApi(FastAPI):
             else:
                 raise TypeError(f"Invalid type for roster item: {app_or_router}")
 
-    def setup_middleware(self, roster: list[Callable | tuple[object, dict]]) -> None:
+    def setup_middleware(self, roster: list[Any]) -> None:
         for middle_fc in roster[::-1]:
             if isfunction(middle_fc):
                 self.add_middleware(BaseHTTPMiddleware, dispatch=middle_fc)
@@ -80,6 +81,11 @@ class ServiceApi(FastAPI):
     ) -> None:
         for exc, handler in roster:
             self.add_exception_handler(exc, handler)  # type: ignore
+
+    @abstractmethod
+    async def before_server_start(self) -> None:
+        # 生产环境启动前执行代码
+        raise NotImplementedError
 
 
 @asynccontextmanager
