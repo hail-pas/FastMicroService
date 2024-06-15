@@ -28,6 +28,8 @@ aerich = "0.7.2"
 pyinstrument = "4.6.0"
 redis = "5.0.5"
 redis-om = "0.3.1"
+cachetools = "5.3.3"
+loguru = "0.7.2"
 # python-ulid = "2.6.0"
 
 ipython = {version = "8.15.0", optional = true }
@@ -226,28 +228,5 @@ warn_required_dynamic_aliases = true
 
 [tool.aerich]
 tortoise_orm = "storages.relational.migrate.env.TORTOISE_ORM_CONFIG"
-location = "storages/relational/migrate/versions"
+location = "storages/relational/migrate"
 src_folder = "./."
-
-
-# pip install --trusted-host 192.168.3.59 --index-url http://192.168.3.59:8082/simple/ poetry==1.5.1
-# If poetry install failed, excute follow shell command
-# shell
-# >>> poetry cache clear . --all
-# >>> rm poetry.lock
-# >>> poetry install -vvv
-# export requirements.tx
-# >>> poetry export -f requirements.txt --output requirements.txt --without-hashes
-
-# http_proxy: export http_proxy=http://127.0.0.1:1087;export https_proxy=http://127.0.0.1:1087;export ALL_PROXY=socks5://127.0.0.1:1080
-# unset: networksetup -setwebproxystate "Wi-fi" off
-
-# private repository
-# tips: --hash-algo sha256; 解决poetry安装依赖时报错
-# 1. packages directory
-# 2. add pyproject.toml to packages directory
-# 3. pip download -d /opt/pypiserver/ -r ./requirements.txt
-
-
-# strict error
-# pip install poetry==1.5.1

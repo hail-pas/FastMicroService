@@ -3,7 +3,7 @@ from decimal import Decimal
 
 from tortoise import validators
 
-from common.exceptions import ValidationError
+from services.exceptions import ValidationError
 from common.constant.messages import ValidationErrorMsgTemplates
 
 

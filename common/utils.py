@@ -55,10 +55,10 @@ def get_client_ip(request: Request) -> str | None:
 
 def datetime_now() -> datetime.datetime:
     # 返回带有时区信息的时间
-    from burnish_sdk_py.load_config import local_configs
+    from conf.config import local_configs
 
     return datetime.datetime.now(
-        tz=ZoneInfo(local_configs.RELATIONAL.TIMEZONE or "Asia/Shanghai"),
+        tz=local_configs.relational.timezone,
     )
 
 
@@ -144,11 +144,9 @@ def seconds_to_format_str(
 ) -> str:
     """时间戳装换为对应格式化时间, 需要传秒级时间戳 或者 配合offset转换成秒级."""
     if not tzinfo:
-        from burnish_sdk_py.load_config import local_configs
+        from conf.config import local_configs
 
-        tzinfo = ZoneInfo(
-            local_configs.RELATIONAL.TIMEZONE or "Asia/Shanghai",
-        )
+        tzinfo = local_configs.relational.timezone
     v = datetime.datetime.fromtimestamp(seconds * offset, tz=tzinfo)
     return v.strftime(format_str)
 
@@ -160,11 +158,9 @@ def format_str_to_seconds(
 ) -> int:
     """格式化时间转换为对应时区的时间戳."""
     if not tzinfo:
-        from burnish_sdk_py.load_config import local_configs
+        from conf.config import local_configs
 
-        tzinfo = ZoneInfo(
-            local_configs.RELATIONAL.TIMEZONE or "Asia/Shanghai",
-        )
+        tzinfo = local_configs.relational.timezone
     if isinstance(value, datetime.datetime):
         value = value.replace(tzinfo=tzinfo)
     else:

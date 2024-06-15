@@ -4,7 +4,7 @@ from collections.abc import Callable
 
 import pydantic
 from fastapi import Form
-from pydantic.fields import ModelField
+from pydantic.fields import ModelField  # type: ignore
 from tortoise.contrib.pydantic.base import PydanticModel
 
 from common.utils import DATETIME_FORMAT_STRING, filter_dict
@@ -19,12 +19,12 @@ def optional(*fields) -> Callable[[pydantic.BaseModel], pydantic.BaseModel]:
 
     def dec(_cls: pydantic.BaseModel) -> pydantic.BaseModel:
         for field in fields:
-            _cls.__fields__[field].required = False
+            _cls.model_fields[field].required = False  # type: ignore
         return _cls
 
     if fields and inspect.isclass(fields[0]) and issubclass(fields[0], pydantic.BaseModel):
         cls = fields[0]
-        fields = cls.__fields__  # type: ignore
+        fields = cls.model_fields  # type: ignore
         return dec(cls)  # type: ignore
 
     return dec
@@ -57,15 +57,15 @@ def sub_fields_model(
 def as_form(cls: type[pydantic.BaseModel]) -> type[pydantic.BaseModel]:
     new_parameters = []
 
-    for _field_name, model_field in cls.__fields__.items():
+    for _field_name, model_field in cls.model_fields.items():
         model_field: ModelField  # type: ignore
 
         new_parameters.append(
             inspect.Parameter(
-                model_field.alias,
+                model_field.alias,  # type: ignore
                 inspect.Parameter.POSITIONAL_ONLY,
-                default=Form(...) if model_field.required else Form(model_field.default),
-                annotation=model_field.outer_type_,
+                default=Form(...) if model_field.required else Form(model_field.default),  # type: ignore
+                annotation=model_field.outer_type_,  # type: ignore
             ),
         )
 

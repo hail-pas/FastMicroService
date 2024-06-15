@@ -58,13 +58,14 @@ def post_fork(server: Any, worker: Any) -> None:  # ruff: noqa
 
 
 async def run_migrations() -> None:
-    command = Command(
-        tortoise_config=local_configs.relational.tortoise_orm_config,
-        app=ConnectionNameEnum.user_center.value,
-        location=VersionFilePath,
-    )
-    await command.init()
-    await command.upgrade(run_in_transaction=True)
+    for connection_name in ConnectionNameEnum:
+        command = Command(
+            tortoise_config=local_configs.relational.tortoise_orm_config,
+            app=connection_name.value,
+            location=VersionFilePath,
+        )
+        await command.init()
+        await command.upgrade(run_in_transaction=True)
 
 
 if __name__ == "__main__":

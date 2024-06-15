@@ -4,13 +4,14 @@ import multiprocessing
 from typing import Self
 from pathlib import Path
 from zoneinfo import ZoneInfo
+from contextlib import asynccontextmanager
+from urllib.parse import unquote
+from collections.abc import AsyncGenerator
 
 from pydantic import HttpUrl, MySQLDsn, RedisDsn, BaseModel, ConfigDict, model_validator
 from redis.retry import Retry
-from redis.asyncio import ConnectionPool
+from redis.asyncio import Redis, ConnectionPool
 from redis.backoff import NoBackoff
-
-from common.types import StrEnumMore
 
 
 class EnvironmentEnum(str, enum.Enum):
@@ -27,15 +28,15 @@ ENVIRONMENT = os.environ.get(
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
-class ConnectionNameEnum(StrEnumMore):
+class ConnectionNameEnum(str, enum.Enum):
     """数据库连接名称"""
 
-    default = ("default", "默认连接")
-    user_center = ("user_center", "用户中心连接")
-    asset_center = ("asset_center", "资产中心连接")
+    default = "default"  # "默认连接"
+    user_center = "user_center"  # "用户中心连接"
+    asset_center = "asset_center"  # "资产中心连接"
 
 
-VersionFilePath: str = f"{BASE_DIR}/storages/relational/migrate/versions/"
+VersionFilePath: str = f"{BASE_DIR}/storages/relational/migrate/"
 
 
 class Relational(BaseModel):
@@ -50,10 +51,33 @@ class Relational(BaseModel):
 
     @property
     def tortoise_orm_config(self) -> dict:
+        echo = True
         return {
             "connections": {
-                ConnectionNameEnum.user_center.value: self.user_center,
-                ConnectionNameEnum.asset_center.value: self.asset_center,
+                ConnectionNameEnum.user_center.value: {
+                    "engine": "tortoise.backends.mysql",
+                    "credentials": {
+                        "host": self.user_center.host,
+                        "port": self.user_center.port,
+                        "user": self.user_center.username,
+                        "password": unquote(self.user_center.password) if self.user_center.password else "",
+                        "database": self.user_center.path.strip("/"),  # type: ignore
+                        "echo": echo,
+                        "maxsize": 10,
+                    },
+                },
+                ConnectionNameEnum.asset_center.value: {
+                    "engine": "tortoise.backends.mysql",
+                    "credentials": {
+                        "host": self.asset_center.host,
+                        "port": self.asset_center.port,
+                        "user": self.asset_center.username,
+                        "password": unquote(self.asset_center.password) if self.asset_center.password else "",
+                        "database": self.asset_center.path.strip("/"),  # type: ignore
+                        "echo": echo,
+                        "maxsize": 10,
+                    },
+                },
             },
             "apps": {
                 ConnectionNameEnum.user_center.value: {
@@ -65,7 +89,6 @@ class Relational(BaseModel):
                 },
                 ConnectionNameEnum.asset_center.value: {
                     "models": [
-                        "aerich.models",
                         "storages.relational.models.vehicle",
                     ],
                     "default_connection": ConnectionNameEnum.asset_center.value,
@@ -77,7 +100,7 @@ class Relational(BaseModel):
         }
 
 
-class Redis(BaseModel):
+class RedisConfig(BaseModel):
     user_center: RedisDsn
     asset_center: RedisDsn
     max_connections: int = 10
@@ -92,10 +115,21 @@ class Redis(BaseModel):
             health_check_interval=30,
         )
 
+    @asynccontextmanager
+    async def get_redis(self, service: ConnectionNameEnum, **kwargs) -> AsyncGenerator[Redis, None]:  # type: ignore
+        try:
+            r: Redis = Redis(
+                connection_pool=self.connection_pool(service),
+                **kwargs,
+            )
+            yield r
+        finally:
+            await r.close()
+
 
 class CorsConfig(BaseModel):
-    allow_origin: list[str] = ["*"]
-    allow_credential: bool = True
+    allow_origins: list[str] = ["*"]
+    allow_credentials: bool = True
     allow_methods: list[str] = ["*"]
     allow_headers: list[str] = ["*"]
     expose_headers: list[str] = []
@@ -103,9 +137,9 @@ class CorsConfig(BaseModel):
     @property
     def headers(self) -> dict:
         result = {
-            "Access-Control-Allow-Origin": ",".join(self.allow_origin) if "*" not in self.allow_origin else "*",
+            "Access-Control-Allow-Origin": ",".join(self.allow_origins) if "*" not in self.allow_origins else "*",
             "Access-Control-Allow-Credentials": str(
-                self.allow_credential,
+                self.allow_credentials,
             ).lower(),
             "Access-Control-Expose-Headers": ",".join(self.allow_headers) if "*" not in self.allow_headers else "*",
             "Access-Control-Allow-Methods": ",".join(self.allow_methods) if "*" not in self.allow_methods else "*",

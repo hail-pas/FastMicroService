@@ -1,95 +1,73 @@
 # ruff: noqa: RET504
 from math import ceil
-from typing import Generic, TypeVar
+from typing import Self, Generic, TypeVar
 from datetime import datetime
+from collections.abc import Sequence
 
-import orjson
-from pydantic import Field, BaseModel, validator, root_validator
-from pydantic.generics import GenericModel
+from pydantic import Field, BaseModel, field_validator, model_validator
+from fastapi.responses import ORJSONResponse
 from starlette_context import context
-from starlette.responses import JSONResponse
 
 from common.enums import ResponseCodeEnum
-from common.utils import DATETIME_FORMAT_STRING, datetime_now
+from common.utils import datetime_now
 from common.context import ContextKeyEnum
 from common.schemas import Pager
-from common.pydantic import DateTimeFormatConfig
 
 
-class AesResponse(JSONResponse):
-    """响应：
-    res = {
-        "code": 0,
-        "response_time": "datetime",
-        "message": "message",  # 可选信息
-        "data": "data"    # 当code等于0表示正常调用，该字段返回正常结果
-        "trace_id": "trace_id"  # 请求唯一标识
-        }
-    不直接使用该Response， 使用下面的响应Model - 具有校验/生成文档的功能.
-    """
+class AesResponse(ORJSONResponse):
+    pass
 
-    def render(self, content: dict) -> bytes:
-        """AES加密响应体"""
-        # if not get_settings().DEBUG:
-        # content = AESUtil(local_configs.AES.SECRET).encrypt_data(
-        #       orjson.dumps(content, option=orjson.OPT_NON_STR_KEYS).decode())
-        return orjson.dumps(content, option=orjson.OPT_NON_STR_KEYS)
+    # def render(self, content: dict) -> bytes:
+    #     """AES加密响应体"""
+    #     # if not get_settings().DEBUG:
+    #     # content = AESUtil(local_configs.AES.SECRET).encrypt_data(
+    #     #       orjson.dumps(content, option=orjson.OPT_NON_STR_KEYS).decode())
+    #     return orjson.dumps(content, option=orjson.OPT_NON_STR_KEYS)
 
 
 DataT = TypeVar("DataT")
 
 
-class BaseResp(GenericModel, Generic[DataT]):
+class Resp(BaseModel, Generic[DataT]):
     """响应Model."""
 
     code: int = Field(
-        default=ResponseCodeEnum.success.value,
-        description=f"业务响应代码, {ResponseCodeEnum.dict}",  # type: ignore
+        default=ResponseCodeEnum.success,
+        description=f"业务响应代码, {ResponseCodeEnum._dict}",  # type: ignore
     )
-    response_time: datetime | None = Field(default=None, description="响应时间")
+    response_time: datetime | None = Field(default_factory=datetime_now, description="响应时间")
     message: str | None = Field(default=None, description="响应提示信息")
+    data: DataT | None = Field(
+        default=None,
+        description="响应数据格式",
+    )
     trace_id: str | None = Field(default=None, description="请求唯一标识")
 
-    @validator("response_time", always=True)
-    def set_response_time(cls, value: datetime | None) -> str:
-        if not value:
-            value = datetime_now()
-        return value.strftime(DATETIME_FORMAT_STRING)
-
-    @validator("trace_id", always=True)
+    @field_validator("trace_id", mode="before")
     def set_trace_id(cls, value: str | None) -> str:
         if not value:
             value = str(context.get(ContextKeyEnum.request_id.value, ""))
         return value
 
-    @root_validator
-    def set_failed_response(cls, values: dict) -> dict:
-        code = values["code"]
-        context[ContextKeyEnum.response_code.value] = code
-        if code != ResponseCodeEnum.success.value:
+    @model_validator(mode="after")
+    def set_failed_response(self) -> Self:
+        context[ContextKeyEnum.response_code.value] = self.code
+        if self.code != ResponseCodeEnum.success:
             context[ContextKeyEnum.response_data.value] = {
-                "code": code,
-                "message": values["message"],
-                "data": values["data"],
+                "code": self.code,
+                "message": self.message,
+                "data": self.data,
             }
-        return values
+        return self
 
-    class Config(DateTimeFormatConfig):
-        ...
-
-
-class Resp(BaseResp[DataT], Generic[DataT]):
-    data: DataT | None = Field(
-        default=None,
-        description="响应数据格式",
-    )
+    # model_config = ConfigDict(json_encoders={datetime: lambda v: v.strftime(DATETIME_FORMAT_STRING)})
 
     @classmethod
     def fail(
         cls,
         message: str,
         code: int = ResponseCodeEnum.failed.value,
-    ) -> "Resp":
+    ) -> Self:
         return cls(code=code, message=message)
 
 
@@ -106,11 +84,9 @@ class PageInfo(BaseModel):
     page: int
 
 
-# class PageResp(BaseResp[DataT], Generic[DataT]):
-#     page_info: PageInfo
-#     data: Sequence[DataT]
-
-#     __params_type__ = Pager
+class PageResp(BaseModel, Generic[DataT]):
+    page_info: PageInfo
+    records: Sequence[DataT]
 
 
 def generate_page_info(total_count: int, pager: Pager) -> PageInfo:

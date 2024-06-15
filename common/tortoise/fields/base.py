@@ -1,4 +1,5 @@
 import abc
+import uuid
 import datetime
 import warnings
 from typing import Any, TypeVar
@@ -8,8 +9,8 @@ from collections.abc import Callable
 from tortoise import fields, timezone, validators
 from tortoise.models import Model
 from tortoise.timezone import get_use_tz, get_default_timezone
-
-# from burnish_sdk_py.common.regexes import URI_REGEX
+from tortoise.exceptions import ConfigurationError
+from tortoise.expressions import RawSQL
 
 
 class StorageMixin:
@@ -149,49 +150,12 @@ class TimestampField(fields.DatetimeField):
         # if value == "0":
         #     # 区分 0 和 null
         #     return 0  # type: ignore
-        from burnish_sdk_py.load_config import local_configs
+        from conf.config import local_configs
 
         return datetime.datetime.fromtimestamp(
             value,  # type: ignore
-            local_configs.RELATIONAL.zone,
+            local_configs.relational.timezone,
         )
-
-
-# class UUIDToBinaryField(fields.UUIDField):
-#     """uuid 顺序主键, 使用uuid1(支持的并发足够)
-#     将时间戳和变体号交换, 使其单向递增, 提升索引性能. 仅对uuid1有效
-#     """
-
-#     def __init__(self, pk: bool = False, **kwargs) -> None:
-#         if pk and "default" not in kwargs:
-#             kwargs["default"] = uuid.uuid1
-#         super().__init__(pk=pk, **kwargs)
-
-#     def to_db_value(  # type: ignore
-#         self,
-#         value: uuid.UUID | str | bytes | None,
-#         instance: "type[models.Model] | models.Model",
-#     ) -> bytes | None:
-#         if value is None:
-#             return None
-#         # if isinstance(value, str):
-#         # value = uuid.UUID(value)
-#         from pypika import Query, Table, Field, Parameter, FormatParameter
-
-#         match value:
-#             case str():
-#                 value = uuid.UUID(value)
-#             case bytes():
-#                 value = uuid.UUID(bytes=value)
-
-#         return uuid_to_bin(value)
-#         # return RawSQL(f'uuid_to_bin("{str(value)}", 1)')
-#         # return f"uuid_to_bin(\"{str(value)}\", 1)"
-
-#     def to_python_value(self, value: bytes | None) -> uuid.UUID | None:
-#         if value is None:
-#             return None
-#         return bin_to_uuid(bytes=value)
 
 
 class TimeField(fields.TimeField):
@@ -242,3 +206,36 @@ class TimeField(fields.TimeField):
             value = value.replace(tzinfo=get_default_timezone())
         self.validate(value)
         return value
+
+
+class BinaryUUIDField(fields.Field[uuid.UUID], uuid.UUID):
+    SQL_TYPE = "BINARY(16)"
+
+    class _db_postgres:
+        SQL_TYPE = "UUID"
+
+    def to_db_value(self, value: uuid.UUID | str | bytes | None, instance: type[Model] | Model) -> RawSQL | None:
+        match value:
+            case uuid.UUID():
+                return RawSQL(f"UUID_TO_BIN('{value}')")
+            case str():
+                return RawSQL(f"UUID_TO_BIN('{uuid.UUID(value)}')")
+            case bytes():
+                return RawSQL(f"UUID_TO_BIN('{uuid.UUID(bytes=value)}')")
+            case None:
+                return None
+            case _:
+                raise ConfigurationError("This field only accepts UUID values")
+
+    def to_python_value(self, value: uuid.UUID | str | bytes | None) -> uuid.UUID | None:
+        match value:
+            case uuid.UUID():
+                return value
+            case str():
+                return uuid.UUID(value)
+            case bytes():
+                return uuid.UUID(bytes=value)
+            case None:
+                return None
+            case _:
+                raise ConfigurationError("This field only accepts UUID values")

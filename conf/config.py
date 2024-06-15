@@ -6,14 +6,14 @@ from pydantic_settings import (
     PydanticBaseSettingsSource,
 )
 
-from conf.defines import BASE_DIR, ENVIRONMENT, Redis, Server, Project, Relational
+from conf.defines import BASE_DIR, ENVIRONMENT, Server, Project, Relational, RedisConfig
 
 
 class LocalConfig(BaseSettings):
     """全部的配置信息."""
 
     relational: Relational
-    redis: Redis
+    redis: RedisConfig
     server: Server
     project: Project
 

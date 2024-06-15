@@ -3,7 +3,6 @@ import uuid
 from typing import Any
 from contextvars import ContextVar
 
-from loguru import logger
 from starlette.types import Message
 from starlette_context import context
 from starlette.requests import Request, HTTPConnection
@@ -11,6 +10,7 @@ from starlette.responses import Response
 from starlette.datastructures import MutableHeaders
 from starlette_context.plugins import Plugin
 
+from common.log import logger
 from common.enums import (
     ContextKeyEnum,
     ResponseCodeEnum,

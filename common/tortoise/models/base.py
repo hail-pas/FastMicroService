@@ -7,7 +7,7 @@ from tortoise.queryset import QuerySet
 from tortoise.backends.base.client import BaseDBAsyncClient
 
 from common.utils import datetime_now, sequential_uuid_from_ulid
-from common.tortoise.fields.base import TimestampField
+from common.tortoise.fields.base import TimestampField, BinaryUUIDField
 
 
 class NotDeletedManager(manager.Manager):
@@ -16,7 +16,7 @@ class NotDeletedManager(manager.Manager):
 
 
 class UUIDPrimaryKeyModel(Model):
-    id = fields.UUIDField(
+    id = BinaryUUIDField(
         description="主键",
         pk=True,
         default=sequential_uuid_from_ulid,

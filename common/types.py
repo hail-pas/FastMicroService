@@ -8,7 +8,7 @@ class MyEnumMeta(EnumMeta):
             return super().__call__(value)
         obj = super().__call__(value)  # type: ignore
         obj._value_ = value
-        obj.label = label
+        obj._label = label
         return obj
 
     def __new__(metacls, cls, bases, classdict):  # type: ignore
@@ -25,8 +25,13 @@ class StrEnumMore(StrEnum, metaclass=MyEnumMeta):
     def __new__(cls, value, label):  # type: ignore
         obj = str.__new__(cls, value)
         obj._value_ = value
-        obj.label = label  # type: ignore
+        obj._label = label  # type: ignore
         return obj
+
+    @property
+    def label(self):
+        """The value of the Enum member."""
+        return self._label  # type: ignore
 
 
 class IntEnumMore(IntEnum, metaclass=MyEnumMeta):
@@ -36,5 +41,10 @@ class IntEnumMore(IntEnum, metaclass=MyEnumMeta):
     def __new__(cls, value, label):  # type: ignore
         obj = int.__new__(cls, value)
         obj._value_ = value
-        obj.label = label  # type: ignore
+        obj._label = label  # type: ignore
         return obj
+
+    @property
+    def label(self):
+        """The value of the Enum member."""
+        return self._label  # type: ignore

@@ -3,10 +3,10 @@ from typing import Any
 from collections.abc import Callable
 
 import orjson
-from fastapi import FastAPI, WebSocket
+from fastapi import WebSocket
 from pydantic import ValidationError as PydanticValidationError
 from fastapi.responses import HTMLResponse
-from fastapi.exceptions import RequestValidationError, WebSocketRequestValidationError
+from fastapi.exceptions import RequestValidationError
 from starlette.requests import Request
 from tortoise.exceptions import ValidationError as TortoiseValidationError
 from starlette.exceptions import HTTPException
@@ -23,13 +23,13 @@ from common.constant.messages import (
 class ApiException(Exception):
     """非 0 的业务错误."""
 
-    code: int = ResponseCodeEnum.failed.value
-    message: str | None = None
+    code: ResponseCodeEnum = ResponseCodeEnum.failed
+    message: str
 
     def __init__(
         self,
         message: str,
-        code: int = ResponseCodeEnum.failed.value,
+        code: ResponseCodeEnum = ResponseCodeEnum.failed,
     ) -> None:
         self.code = code
         self.message = message
@@ -65,34 +65,24 @@ class ValidationError(Exception):
 async def api_exception_handler(
     request: Request | WebSocket,
     exc: ApiException,
-) -> AesResponse | None:
-    if request.scope["type"] == "websocket":
-        await request.close(code=exc.code, reason=exc.message)  # type: ignore
-        return None
+) -> AesResponse:
     return AesResponse(
         content=Resp(
             code=exc.code,
             message=exc.message,
             data=None,
-        ).dict(),
+        ),
     )
 
 
 async def unexpected_exception_handler(
     request: Request | WebSocket,
     exc: Exception,
-) -> AesResponse | HTMLResponse | None:
-    if request.scope["type"] == "websocket":
-        await request.close(  # type: ignore
-            code=ResponseCodeEnum.internal_error.value,
-            reason=str(exc) or ResponseCodeEnum.internal_error.label,
-        )
-        return None
-
-    if local_configs.PROJECT.DEBUG:
+) -> AesResponse | HTMLResponse:
+    if local_configs.project.debug:
         return HTMLResponse(
             content=traceback.format_exc(),
-            headers=local_configs.SERVER.CORS.headers,
+            headers=local_configs.server.cors.headers,
         )
 
     return AesResponse(
@@ -100,8 +90,8 @@ async def unexpected_exception_handler(
             code=ResponseCodeEnum.internal_error.value,
             message=ResponseCodeEnum.internal_error.label,
             data=None,
-        ).dict(),
-        headers=local_configs.SERVER.CORS.headers,
+        ),
+        headers=local_configs.server.cors.headers,
     )
 
 
@@ -119,7 +109,7 @@ async def http_exception_handler(
             code=exc.status_code,
             message=exc.detail,
             data=None,
-        ).dict(),
+        ),
     )
 
 
@@ -135,7 +125,7 @@ def get_exc_field_msg(
             field_name, msg = DirectValidateErrorMsgTemplates[error_type]
         else:
             # 字段异常
-            error = exc.raw_errors[0]
+            error = exc.raw_errors[0]  # type: ignore
             model = getattr(error.exc, "model", None)  # type: ignore
             if len(first_error_info["loc"]) == 2:
                 field_name = str(first_error_info["loc"][1])
@@ -156,7 +146,7 @@ def get_exc_field_msg(
             if error_type == "type_error.enum":  # enum类型的 ast.literal 有问题
                 error_list = None  # type: ignore
     except Exception:  # type: ignore
-        error_exc_data = orjson.loads(exc.json())
+        error_exc_data = orjson.loads(exc.json())  # type: ignore
         field_name = error_exc_data[0]["loc"][0]
         msg = error_exc_data[0]["msg"]
     return field_name, msg
@@ -200,10 +190,10 @@ async def validation_exception_handler(
 
     return AesResponse(
         content=Resp(
-            code=ResponseCodeEnum.validation_error.value,
+            code=ResponseCodeEnum.failed,
             message=f"{field_name}: {msg}",
             data=None,  # {"data": exc.body, "errors": error_list},
-        ).dict(),
+        ),
     )
 
 
@@ -217,9 +207,9 @@ async def custom_validation_error_handler(
 
     return AesResponse(
         content=Resp(
-            code=ResponseCodeEnum.validation_error.value,
+            code=ResponseCodeEnum.failed,
             message=message,
-        ).dict(),
+        ),
     )
 
 
@@ -231,18 +221,10 @@ async def tortoise_validation_error_handler(
 
     return AesResponse(
         content=Resp(
-            code=ResponseCodeEnum.validation_error.value,
+            code=ResponseCodeEnum.failed,
             message=f"{field_name}: {ValidateFailedMsg % ''}",
-        ).dict(),
+        ),
     )
-
-
-async def websocket_validateion_exception_handler(
-    request: WebSocket,
-    exc: WebSocketRequestValidationError,
-) -> None:
-    await request.close(reason=exc.json())
-    return
 
 
 roster: list[tuple[type[Exception], Callable[..., Any]]] = [
@@ -250,17 +232,7 @@ roster: list[tuple[type[Exception], Callable[..., Any]]] = [
     (PydanticValidationError, validation_exception_handler),
     (ValidationError, custom_validation_error_handler),
     (TortoiseValidationError, tortoise_validation_error_handler),
-    (WebSocketRequestValidationError, websocket_validateion_exception_handler),
     (ApiException, api_exception_handler),
     (HTTPException, http_exception_handler),
     (Exception, unexpected_exception_handler),
 ]
-
-
-def setup_exception_handlers(
-    main_app: FastAPI,
-    custom_roster: list[tuple[type[Exception], Callable[..., Any]]] | None = None,
-) -> None:
-    custom_roster = custom_roster or []
-    for exc, handler in roster + custom_roster:
-        main_app.add_exception_handler(exc, handler)  # type: ignore
