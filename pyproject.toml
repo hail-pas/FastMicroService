@@ -57,12 +57,6 @@ py-spy = "0.3.14"         # profile
 mypy = "1.4.1"
 
 
-# [[tool.poetry.source]]
-# name = "burnish"
-# url = "http://192.168.3.59:8082/simple/"
-# priority = "primary"
-
-
 [[tool.poetry.source]]
 name = "PyPI"
 priority = "primary"

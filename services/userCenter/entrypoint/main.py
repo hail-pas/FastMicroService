@@ -43,7 +43,6 @@ def post_fork(server: Any, worker: Any) -> None:  # ruff: noqa
     #     # This must be done to distinguish instances if you give your instance customized names
     #     # (highly recommended to identify workers)
     #     # Notice the -child(pid) part is required to tell the difference of each worker.
-    #     agent_instance_name = f"python:burnish-user-cernter-child({os.getpid()})"
 
     #     config.init(
     #         agent_collector_backend_services="192.168.3.46:11800",
