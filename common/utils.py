@@ -5,9 +5,11 @@ import random
 import socket
 import string
 import asyncio
+import gettext
 import datetime
+import importlib
 import posixpath
-from typing import Any, Union, Literal, Callable, Iterable
+from typing import Any, Dict, Union, Literal, Callable, Iterable
 from zoneinfo import ZoneInfo
 from collections.abc import Hashable, Coroutine
 
@@ -16,6 +18,8 @@ from fastapi import FastAPI
 from cachetools import LRUCache
 from starlette.routing import Mount, Route, WebSocketRoute
 from starlette.requests import Request
+
+from conf.config import BASE_DIR, local_configs
 
 DATETIME_FORMAT_STRING = "%Y-%m-%d %H:%M:%S"
 DATE_FORMAT_STRING = "%Y-%m-%d"
@@ -55,8 +59,6 @@ def get_client_ip(request: Request) -> str | None:
 
 def datetime_now() -> datetime.datetime:
     # 返回带有时区信息的时间
-    from conf.config import local_configs
-
     return datetime.datetime.now(
         tz=local_configs.relational.timezone,
     )
@@ -144,8 +146,6 @@ def seconds_to_format_str(
 ) -> str:
     """时间戳装换为对应格式化时间, 需要传秒级时间戳 或者 配合offset转换成秒级."""
     if not tzinfo:
-        from conf.config import local_configs
-
         tzinfo = local_configs.relational.timezone
     v = datetime.datetime.fromtimestamp(seconds * offset, tz=tzinfo)
     return v.strftime(format_str)
@@ -158,8 +158,6 @@ def format_str_to_seconds(
 ) -> int:
     """格式化时间转换为对应时区的时间戳."""
     if not tzinfo:
-        from conf.config import local_configs
-
         tzinfo = local_configs.relational.timezone
     if isinstance(value, datetime.datetime):
         value = value.replace(tzinfo=tzinfo)
@@ -502,3 +500,30 @@ class PersistentCache:
     async def set(self, key: str, value: Any):
         async with self.lock:  # 确保线程安全
             self.cache[key] = value
+
+
+class Translator:
+    _instances: Dict[str, "Translator"] = {}
+    _translations: Dict[str, gettext.GNUTranslations] = {}
+
+    def __new__(cls, lang: str) -> "Translator":
+        if lang not in cls._instances:
+            cls._instances[lang] = super(Translator, cls).__new__(cls)
+        return cls._instances[lang]
+
+    def __init__(self, lang: Literal["zh", "en"]):
+        self.lang = lang
+
+    def load_translations(self, key: str) -> gettext.GNUTranslations:
+        cache_key = f"{self.lang}:{key}"
+        if cache_key in self._translations:
+            return self._translations[cache_key]
+
+        # Load translations from file
+        translation = gettext.translation(key, localedir="locales", languages=[self.lang])
+        self._translations[cache_key] = translation
+        return translation
+
+    def t(self, key: str, message: str, **kwargs: Dict[str, Any]) -> str:
+        translated_message = self.load_translations(key).gettext(message)
+        return translated_message.format(**kwargs)

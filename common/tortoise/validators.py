@@ -4,11 +4,11 @@ from decimal import Decimal
 from tortoise import validators
 
 from services.exceptions import ValidationError
-from common.constant.messages import ValidationErrorMsgTemplates
+from common.constant.validate import ValidationErrorMsgTemplates
 
 
 class RegexValidator(validators.RegexValidator):
-    error_type: str = "value_error.str.regex"
+    error_type: str = "ValidateErrorTypeEnum."
     error_message_template: str = ValidationErrorMsgTemplates[error_type]
     ctx: dict
     default_ctx: dict

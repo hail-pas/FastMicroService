@@ -146,7 +146,7 @@ def setup_loguru(
     sink: TextIO | Callable[[loguru.Record], None] | logging.Handler = json_sink,
 ) -> None:
     # loguru
-    global _loguru_setup_done # ruff: noqa: PLW0603
+    global _loguru_setup_done  # ruff: noqa: PLW0603
     if _loguru_setup_done:
         return
 

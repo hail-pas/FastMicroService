@@ -1,5 +1,9 @@
 # ruff: noqa
 from enum import IntEnum, StrEnum, EnumMeta
+from typing import Annotated
+from datetime import datetime as origin_datetime
+
+from pydantic import PlainSerializer
 
 
 class MyEnumMeta(EnumMeta):
@@ -48,3 +52,9 @@ class IntEnumMore(IntEnum, metaclass=MyEnumMeta):
     def label(self):
         """The value of the Enum member."""
         return self._label  # type: ignore
+
+
+datetime = Annotated[
+    origin_datetime,
+    PlainSerializer(lambda _datetime: _datetime.strftime("%Y-%m-%d %H:%M:%S"), return_type=origin_datetime),
+]

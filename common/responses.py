@@ -1,14 +1,15 @@
 # ruff: noqa: RET504
 from math import ceil
 from typing import Self, Generic, TypeVar
-from datetime import datetime
 from collections.abc import Sequence
 
-from pydantic import Field, BaseModel, field_validator, model_validator
+from loguru import logger
+from pydantic import Field, BaseModel, ValidationInfo, field_validator, model_validator
 from fastapi.responses import ORJSONResponse
 from starlette_context import context
 
 from common.enums import ResponseCodeEnum
+from common.types import datetime
 from common.utils import datetime_now
 from common.context import ContextKeyEnum
 from common.schemas import Pager
@@ -28,6 +29,15 @@ class AesResponse(ORJSONResponse):
 DataT = TypeVar("DataT")
 
 
+# def validate_trace_id(v: str, info: ValidationInfo) -> str:
+#     if not v:
+#         v = str(context.get(ContextKeyEnum.request_id.value, ""))
+#     return v
+
+
+# TraceId = Annotated[str, PlainValidator(validate_trace_id)]
+
+
 class Resp(BaseModel, Generic[DataT]):
     """响应Model."""
 
@@ -41,10 +51,12 @@ class Resp(BaseModel, Generic[DataT]):
         default=None,
         description="响应数据格式",
     )
-    trace_id: str | None = Field(default=None, description="请求唯一标识")
+    trace_id: str = Field(default="", description="请求唯一标识", validate_default=True)
 
-    @field_validator("trace_id", mode="before")
-    def set_trace_id(cls, value: str | None) -> str:
+    @field_validator("trace_id")
+    @classmethod
+    def set_trace_id(cls, value: str, info: ValidationInfo) -> str:
+        logger.info(f"set trace_id: {value}")
         if not value:
             value = str(context.get(ContextKeyEnum.request_id.value, ""))
         return value
@@ -59,8 +71,6 @@ class Resp(BaseModel, Generic[DataT]):
                 "data": self.data,
             }
         return self
-
-    # model_config = ConfigDict(json_encoders={datetime: lambda v: v.strftime(DATETIME_FORMAT_STRING)})
 
     @classmethod
     def fail(
