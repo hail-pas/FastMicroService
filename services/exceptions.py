@@ -71,7 +71,7 @@ async def api_exception_handler(
             code=exc.code,
             message=exc.message,
             data=None,
-        ),
+        ).model_dump(),
     )
 
 
@@ -90,7 +90,7 @@ async def unexpected_exception_handler(
             code=ResponseCodeEnum.internal_error.value,
             message=ResponseCodeEnum.internal_error.label,
             data=None,
-        ),
+        ).model_dump(),
         headers=local_configs.server.cors.headers,
     )
 
@@ -109,7 +109,7 @@ async def http_exception_handler(
             code=exc.status_code,
             message=exc.detail,
             data=None,
-        ),
+        ).model_dump(),
     )
 
 
@@ -193,7 +193,7 @@ async def validation_exception_handler(
             code=ResponseCodeEnum.failed,
             message=f"{field_name}: {msg}",
             data=None,  # {"data": exc.body, "errors": error_list},
-        ),
+        ).model_dump(),
     )
 
 
@@ -209,7 +209,7 @@ async def custom_validation_error_handler(
         content=Resp(
             code=ResponseCodeEnum.failed,
             message=message,
-        ),
+        ).model_dump(),
     )
 
 
@@ -223,7 +223,7 @@ async def tortoise_validation_error_handler(
         content=Resp(
             code=ResponseCodeEnum.failed,
             message=f"{field_name}: {ValidateFailedMsg % ''}",
-        ),
+        ).model_dump(),
     )
 
 

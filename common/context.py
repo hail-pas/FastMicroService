@@ -118,7 +118,4 @@ class RequestProcessInfoPlugin(Plugin):
             data = context.get(ContextKeyEnum.response_data.value)
             info_dict["response_data"] = data  # type: ignore
 
-        logger.bind(
-            name=InfoLoggerNameEnum.info_request_logger.value,
-            json=True,
-        ).info(info_dict)
+        logger.bind(name=InfoLoggerNameEnum.info_request_logger.value).info(info_dict)

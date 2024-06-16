@@ -10,6 +10,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from common.log import LogLevelEnum, setup_loguru
 from conf.config import LocalConfig
 from common.responses import AesResponse
 
@@ -19,6 +20,7 @@ class ServiceApi(FastAPI, ABC):
     settings: LocalConfig
 
     def __init__(self, code: str, settings: LocalConfig, **kwargs) -> None:
+        setup_loguru(LogLevelEnum.DEBUG if settings.project.debug else LogLevelEnum.INFO)
         super().__init__(**kwargs)
         self.code = code.title()
         self.settings = settings

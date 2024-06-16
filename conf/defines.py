@@ -15,6 +15,7 @@ from redis.backoff import NoBackoff
 
 
 class EnvironmentEnum(str, enum.Enum):
+    local = "local"
     development = "development"
     test = "test"
     production = "production"
@@ -22,7 +23,7 @@ class EnvironmentEnum(str, enum.Enum):
 
 ENVIRONMENT = os.environ.get(
     "environment",  # noqa
-    EnvironmentEnum.development.value,
+    EnvironmentEnum.local.value,
 )
 
 BASE_DIR = Path(__file__).resolve().parent.parent

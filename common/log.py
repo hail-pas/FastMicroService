@@ -12,11 +12,9 @@ from collections.abc import Callable
 import loguru
 from loguru import logger
 from gunicorn import glogging  # type: ignore
-from rich.console import Console
 
 from common.types import IntEnumMore
-
-console = Console()
+from conf.defines import ENVIRONMENT, EnvironmentEnum
 
 
 class LogLevelEnum(IntEnumMore):
@@ -30,18 +28,6 @@ class LogLevelEnum(IntEnumMore):
     INFO = (logging.INFO, "INFO")
     DEBUG = (logging.DEBUG, "DEBUG")
     NOTSET = (logging.NOTSET, "NOTSET")
-
-
-class ColorEnum(str, Enum):
-    # colorize log
-    blue = "\x1b[38;5;39m"
-    cyan = "\x1b[36m"
-    green = "\x1b[32;20m"
-    yellow = "\x1b[38;5;226m"
-    red = "\x1b[38;5;196m"
-    bold_red = "\x1b[31;1m"
-    # reset = "\x1b[0m"
-    no_color = "\033[0m"
 
 
 class ChangableLoggerName(str, Enum):
@@ -67,42 +53,27 @@ IgonredLoggerNames = [
 ]
 
 
-def to_int_level(level: str | int) -> int:
-    if level in LogLevelEnum.labels:  # type: ignore
-        return LogLevelEnum.values[LogLevelEnum.labels.index(level)]  # type: ignore
-    return int(level)
-
-
 class InterceptHandler(logging.Handler):
     """Logs to loguru from Python logging module"""
 
     def emit(self, record: logging.LogRecord) -> None:
         if record.name in IgonredLoggerNames:
             return
-        # 动态日志级别, 涉及到进程、线程间共享字典，性能损耗大
-        # if DynamicLogLevelConfig.get(name, to_int_level(LOG_LEVEL)) > to_int_level(log["level"]):
-        #         return
         try:
             level = logger.level(record.levelname).name
         except ValueError:
             level = str(record.levelno)
 
-        # 动态日志级别, 涉及到进程、线程间共享字典，性能损耗大
-        # name = record.name
-        # if DynamicLogLevelConfig.get(name, to_int_level(LOG_LEVEL)) > to_int_level(level):
-        #     return
-
-        # _logger = logger
-        # request_id =
-        # if request_id:
-        #     _logger = _logger.bind(request_id=request_id)
-
         if record.exc_info:
             # 保持日志一致性
             tb = traceback.extract_tb(sys.exc_info()[2])
             # 获取最后一个堆栈帧的文件名和行号
-            file_name, line_num, func_name, code_str = tb[-1]
+            file_name, line_num, func_name, _ = tb[-1]
             location = f"{file_name}:{func_name}:{line_num}"
+            if ENVIRONMENT in [EnvironmentEnum.local.value]:
+                print(traceback.format_exc())
+                return
+
             logger.bind(location=location).critical(
                 traceback.format_exc(),
             )
@@ -134,11 +105,10 @@ def setup_loguru_logging_intercept(
 def serialize(record: loguru.Record) -> dict:
     """Serialize the JSON log."""
     log = {}
-    name = record["name"]
     log["level"] = record["level"].name
     log["time"] = record["time"].strftime("%Y-%m-%d %H:%M:%S %Z %z")
     log["message"] = record["message"]
-    location = name
+    location = record["name"]
     log["name"] = location  # type: ignore
     if record["function"]:
         location = f'{location}:{record["function"]}'
@@ -168,10 +138,20 @@ class GunicornLogger(glogging.Logger):
         )
 
 
-def init_loguru(
+_loguru_setup_done = False
+
+
+def setup_loguru(
+    level: LogLevelEnum = LogLevelEnum.INFO,
     sink: TextIO | Callable[[loguru.Record], None] | logging.Handler = json_sink,
 ) -> None:
     # loguru
+    global _loguru_setup_done # ruff: noqa: PLW0603
+    if _loguru_setup_done:
+        return
+
+    _loguru_setup_done = True
+
     logger.remove()
     # logger.add(
     #     sink=os.path.join(
@@ -193,7 +173,7 @@ def init_loguru(
     logger.add(
         sink=sink,  # type: ignore
         format="{message}",  # 日志显示格式
-        level=LogLevelEnum.INFO.value,  # 日志级别
+        level=level,  # 日志级别
         enqueue=True,  # 默认是线程安全的，enqueue=True使得多进程安全
         serialize=True,
         backtrace=True,
@@ -210,13 +190,13 @@ def init_loguru(
     )
 
     setup_loguru_logging_intercept(
-        level=logging.getLevelName(LogLevelEnum.INFO.value),
+        level=logging.getLevelName(level),
         modules=UVICORN_LOGGING_MODULES,
     )
 
     # Tortoise
     setup_loguru_logging_intercept(
-        level=logging.getLevelName(logging.INFO),
+        level=logging.getLevelName(level),
         modules=[
             LoggerNameEnum.tortoise.value,  # type: ignore
         ],
