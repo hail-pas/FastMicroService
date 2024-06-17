@@ -8,8 +8,8 @@ from common.constant.validate import ValidationErrorMsgTemplates
 
 
 class RegexValidator(validators.RegexValidator):
-    error_type: str = "ValidateErrorTypeEnum."
-    error_message_template: str = ValidationErrorMsgTemplates[error_type]
+    error_type: str = "ValidateErrorTypeEnum"
+    error_message_template: str = ValidationErrorMsgTemplates[error_type]  # type: ignore
     ctx: dict
     default_ctx: dict
 
@@ -42,7 +42,7 @@ class RegexValidator(validators.RegexValidator):
 
 class MaxLengthValidator(validators.MaxLengthValidator):
     error_type: str = "value_error.any_str.max_length"
-    error_message_template: str = ValidationErrorMsgTemplates[error_type]
+    error_message_template: str = ValidationErrorMsgTemplates[error_type]  # type: ignore
     ctx: dict
     default_ctx: dict
     nullable: bool = False
@@ -88,7 +88,7 @@ class MaxLengthValidator(validators.MaxLengthValidator):
 
 class MinLengthValidator(validators.MinLengthValidator):
     error_type: str = "value_error.any_str.min_length"
-    error_message_template: str = ValidationErrorMsgTemplates[error_type]
+    error_message_template: str = ValidationErrorMsgTemplates[error_type]  # type: ignore
     ctx: dict
     default_ctx: dict
     nullable: bool = False
@@ -134,7 +134,7 @@ class MinLengthValidator(validators.MinLengthValidator):
 
 class MaxValueValidator(validators.MaxValueValidator):
     error_type: str = "value_error.number.not_le"
-    error_message_template: str = ValidationErrorMsgTemplates[error_type]
+    error_message_template: str = ValidationErrorMsgTemplates[error_type]  # type: ignore
     ctx: dict
     default_ctx: dict
 
@@ -174,7 +174,7 @@ class MaxValueValidator(validators.MaxValueValidator):
 
 class MinValueValidator(validators.MinValueValidator):
     error_type: str = "value_error.number.not_ge"
-    error_message_template: str = ValidationErrorMsgTemplates[error_type]
+    error_message_template: str = ValidationErrorMsgTemplates[error_type]  # type: ignore
     ctx: dict
     default_ctx: dict
 

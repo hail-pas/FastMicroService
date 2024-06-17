@@ -117,8 +117,9 @@ async def validation_exception_handler(
 
     error = exc.errors()[0]
     error_type = error["type"]
-    ctx = error["ctx"]
+    ctx = error.get("ctx", {})
     field_name = error["loc"][-1]
+
     if error_type in DirectValidateErrorMsgTemplates:
         field_name, message = DirectValidateErrorMsgTemplates[error_type]
         message = message.format(**ctx)
