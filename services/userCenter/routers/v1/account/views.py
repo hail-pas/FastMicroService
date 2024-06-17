@@ -1,7 +1,11 @@
-from fastapi import Path, Query, Depends
+from typing import Annotated
+from decimal import Decimal
+
+from fastapi import Path, Depends
 from pydantic import Field, BaseModel, ConfigDict, computed_field
 
 from common.types import datetime
+from common.pydantic import as_form
 from common.responses import Resp
 from services.dependencies import FixedContentQueryChecker
 from services.userCenter.routers.v1.account import router
@@ -34,9 +38,16 @@ async def get_current_user(
     return Resp[User](data=user)
 
 
-@router.get("/me")
+@as_form
+class DriverFilterSchema(BaseModel):
+    username: str | None = Field(None, description="用户名", title="用户名", min_length=3, max_length=50)
+    phone: str | None = Field(None, description="手机号", pattern="^[a-zA-Z0-9]+$", title="手机号")
+    age: int | None = Field(None, description="年龄", ge=1, le=100, multiple_of=10, title="年龄")
+    money: Annotated[Decimal, Field(description="金额", gt=0, lt=100, decimal_places=2, title="金额")]
+
+
+@router.post("/me1")
 async def get_user_id(
-    user_id: str = Query(..., description="用户ID", min_length=3, title="用户ID"),
-    fixed_content_included: bool = Depends(checker),
+    driver_filter: DriverFilterSchema = Depends(DriverFilterSchema.as_form),  # type: ignore
 ) -> Resp[dict]:
-    return Resp[dict](data={"user_id": user_id})
+    return Resp[dict](data=driver_filter.dict())

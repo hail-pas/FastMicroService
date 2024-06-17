@@ -1,13 +1,15 @@
+from __future__ import annotations
+
 import inspect
-from datetime import datetime
+from typing import Literal
 from collections.abc import Callable
 
 import pydantic
-from fastapi import Form
-from pydantic.fields import ModelField  # type: ignore
+from fastapi import Form, Query
+from fastapi.params import _Unset
 from tortoise.contrib.pydantic.base import PydanticModel
 
-from common.utils import DATETIME_FORMAT_STRING, filter_dict
+from common.utils import filter_dict
 
 
 def optional(*fields) -> Callable[[pydantic.BaseModel], pydantic.BaseModel]:
@@ -30,12 +32,6 @@ def optional(*fields) -> Callable[[pydantic.BaseModel], pydantic.BaseModel]:
     return dec
 
 
-class DateTimeFormatConfig:
-    json_encoders = {
-        datetime: lambda v: v.strftime(DATETIME_FORMAT_STRING),
-    }
-
-
 def sub_fields_model(
     base_model: type[pydantic.BaseModel] | type[PydanticModel],
     fields: set[str],
@@ -54,20 +50,53 @@ def sub_fields_model(
     return ToModel
 
 
+def create_parameter_from_field_info(
+    type_: Literal["query", "form"],
+    field_name: str,
+    field_info: pydantic.fields.FieldInfo,
+) -> inspect.Parameter:
+    fastapi_parameter_cls = Form if type_ == "form" else Query
+
+    attribute_set = field_info._attributes_set
+
+    return inspect.Parameter(
+        field_info.alias or field_name,
+        inspect.Parameter.POSITIONAL_ONLY,
+        default=fastapi_parameter_cls(  # type: ignore
+            default=field_info.default,
+            default_factory=field_info.default_factory,
+            media_type="application/x-www-form-urlencoded",
+            alias=field_info.alias,
+            alias_priority=field_info.alias_priority,
+            validation_alias=field_info.validation_alias,
+            serialization_alias=field_info.serialization_alias,
+            title=field_info.title,
+            description=field_info.description,
+            gt=attribute_set.get("gt"),
+            ge=attribute_set.get("ge"),
+            lt=attribute_set.get("lt"),
+            le=attribute_set.get("le"),
+            min_length=attribute_set.get("min_length"),
+            max_length=attribute_set.get("max_length"),
+            pattern=attribute_set.get("pattern"),
+            multiple_of=attribute_set.get("multiple_of") or _Unset,
+            allow_inf_nan=attribute_set.get("allow_inf_nan") or _Unset,
+            max_digits=attribute_set.get("max_digits") or _Unset,
+            decimal_places=attribute_set.get("decimal_places") or _Unset,
+            example=field_info.examples,
+            deprecated=field_info.deprecated,
+            json_schema_extra=field_info.json_schema_extra,
+            # min_length=field_info.metadata[0].min_length,
+        ),
+        annotation=field_info.annotation,
+    )
+
+
 def as_form(cls: type[pydantic.BaseModel]) -> type[pydantic.BaseModel]:
     new_parameters = []
 
-    for _field_name, model_field in cls.model_fields.items():
-        model_field: ModelField  # type: ignore
-
-        new_parameters.append(
-            inspect.Parameter(
-                model_field.alias,  # type: ignore
-                inspect.Parameter.POSITIONAL_ONLY,
-                default=Form(...) if model_field.required else Form(model_field.default),  # type: ignore
-                annotation=model_field.outer_type_,  # type: ignore
-            ),
-        )
+    for field_name, field_info in cls.model_fields.items():
+        new_parameters.append(create_parameter_from_field_info("form", field_name, field_info))
 
     async def as_form_func(**data) -> pydantic.BaseModel:
         return cls(**data)
@@ -76,4 +105,20 @@ def as_form(cls: type[pydantic.BaseModel]) -> type[pydantic.BaseModel]:
     sig = sig.replace(parameters=new_parameters)
     as_form_func.__signature__ = sig  # type: ignore
     cls.as_form = as_form_func  # type: ignore
+    return cls
+
+
+def as_query(cls: type[pydantic.BaseModel]) -> type[pydantic.BaseModel]:
+    new_parameters = []
+
+    for field_name, model_field in cls.model_fields.items():
+        new_parameters.append(create_parameter_from_field_info("query", field_name, model_field))
+
+    async def as_query_func(**data) -> pydantic.BaseModel:
+        return cls(**data)
+
+    sig = inspect.signature(as_query_func)
+    sig = sig.replace(parameters=new_parameters)
+    as_query_func.__signature__ = sig  # type: ignore
+    cls.as_query = as_query_func  # type: ignore
     return cls

@@ -3,6 +3,7 @@ from math import ceil
 from typing import Self, Generic, TypeVar
 from collections.abc import Sequence
 
+import orjson
 from loguru import logger
 from pydantic import Field, BaseModel, ValidationInfo, field_validator, model_validator
 from fastapi.responses import ORJSONResponse
@@ -18,12 +19,21 @@ from common.schemas import Pager
 class AesResponse(ORJSONResponse):
     pass
 
-    # def render(self, content: dict) -> bytes:
-    #     """AES加密响应体"""
-    #     # if not get_settings().DEBUG:
-    #     # content = AESUtil(local_configs.AES.SECRET).encrypt_data(
-    #     #       orjson.dumps(content, option=orjson.OPT_NON_STR_KEYS).decode())
-    #     return orjson.dumps(content, option=orjson.OPT_NON_STR_KEYS)
+    def render(self, content: dict) -> bytes:
+        """AES加密响应体"""
+        # if not get_settings().DEBUG:
+        # content = AESUtil(local_configs.AES.SECRET).encrypt_data(
+        #       orjson.dumps(content, option=orjson.OPT_NON_STR_KEYS).decode())
+        if isinstance(content, str):
+            dump_content = content.encode()
+
+        else:
+            dump_content = orjson.dumps(
+                content,
+                option=orjson.OPT_NON_STR_KEYS | orjson.OPT_SERIALIZE_NUMPY | orjson.OPT_PASSTHROUGH_DATETIME,
+            )
+
+        return dump_content
 
 
 DataT = TypeVar("DataT")

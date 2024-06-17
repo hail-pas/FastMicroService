@@ -3,6 +3,7 @@ from typing import Any
 from collections.abc import Callable
 
 from fastapi import WebSocket
+from pydantic import ValidationError as PydanticValidationError
 from fastapi.responses import HTMLResponse
 from fastapi.exceptions import RequestValidationError
 from starlette.requests import Request
@@ -67,7 +68,7 @@ async def api_exception_handler(
             code=exc.code,
             message=exc.message,
             data=None,
-        ).model_dump(),
+        ).model_dump_json(),
     )
 
 
@@ -86,7 +87,7 @@ async def unexpected_exception_handler(
             code=ResponseCodeEnum.internal_error.value,
             message=ResponseCodeEnum.internal_error.label,
             data=None,
-        ).model_dump(),
+        ).model_dump_json(),
         headers=local_configs.server.cors.headers,
     )
 
@@ -105,7 +106,7 @@ async def http_exception_handler(
             code=exc.status_code,
             message=exc.detail,
             data=None,
-        ).model_dump(),
+        ).model_dump_json(),
     )
 
 
@@ -132,7 +133,7 @@ async def validation_exception_handler(
             code=ResponseCodeEnum.failed,
             message=f"{field_name}:{message}",
             data=exc.errors(),  # {"data": exc.body, "errors": error_list},
-        ).model_dump(),
+        ).model_dump_json(),
     )
 
 
@@ -148,13 +149,13 @@ async def custom_validation_error_handler(
         content=Resp(
             code=ResponseCodeEnum.failed,
             message=message,
-        ).model_dump(),
+        ).model_dump_json(),
     )
 
 
 roster: list[tuple[type[Exception], Callable[..., Any]]] = [
     (RequestValidationError, validation_exception_handler),
-    # (PydanticValidationError, validation_exception_handler),
+    (PydanticValidationError, validation_exception_handler),
     # (ValidationError, custom_validation_error_handler),
     # (TortoiseValidationError, tortoise_validation_error_handler),
     (ApiException, api_exception_handler),
