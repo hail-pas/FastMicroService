@@ -5,8 +5,8 @@ from conf.defines import VersionFilePath, ConnectionNameEnum
 from common.fastapi import ServiceApi
 from services.exceptions import roster as exception_handler_roster
 from services.middlewares import roster as middleware_roster
-from services.userCenter.routers.v1 import router as v1_router
-from services.userCenter.routers.v2 import router as v2_router
+from services.userCenter.v1 import router as v1_router
+from services.userCenter.v2 import router as v2_router
 
 
 class UserCenterServiceApi(ServiceApi):

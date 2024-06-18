@@ -2,9 +2,9 @@ from fastapi import Request
 
 from common.responses import Resp
 from services.dependencies import FixedContentQueryChecker
+from services.userCenter.v1.account import router
 from storages.relational.models.account import Account
 from storages.relational.schema.account import AccountList, AccountCreate
-from services.userCenter.routers.v1.account import router
 
 checker = FixedContentQueryChecker("bar")
 
