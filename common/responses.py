@@ -104,9 +104,15 @@ class PageInfo(BaseModel):
     page: int
 
 
-class PageResp(BaseModel, Generic[DataT]):
+class PageData(BaseModel, Generic[DataT]):
     page_info: PageInfo
     records: Sequence[DataT]
+
+    def __init__(self, records: Sequence[DataT], total_count: int, pager: Pager) -> None:
+        super().__init__(
+            page_info=generate_page_info(total_count, pager),
+            records=records,
+        )
 
 
 def generate_page_info(total_count: int, pager: Pager) -> PageInfo:
