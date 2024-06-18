@@ -185,11 +185,8 @@ class Project(BaseModel):
         user_center="UserCenter",
         asset_center="AssetCenter",
     )
-    name: str = "FastService"
-    description: str = "FastService"
     debug: bool = False
     environment: EnvironmentEnum = EnvironmentEnum.production
-    log_dir: str = "logs/"
     sentry_dsn: HttpUrl | None = None
 
     class SwaggerServerConfig(BaseModel):

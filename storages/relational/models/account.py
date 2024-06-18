@@ -33,3 +33,4 @@ class Account(BaseModel):
     class Meta:
         table_description = "账户"
         ordering = ["-id"]
+        app = ConnectionNameEnum.user_center.value

@@ -1,9 +1,12 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from typing import Any, Self
 from inspect import isclass, isfunction
 from contextlib import asynccontextmanager
 from collections.abc import Callable, AsyncGenerator
 
+import loguru
 from fastapi import FastAPI, APIRouter
 from tortoise import Tortoise
 from fastapi.responses import HTMLResponse
@@ -12,20 +15,68 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from common.log import LogLevelEnum, setup_loguru
 from conf.config import LocalConfig
+from common.utils import merge_dict
 from common.responses import AesResponse
 from common.monkey_patch import patch
+
+
+class _ConfigRegistry:
+    _config = {
+        "loguru_setup_done": False,
+        "monkey_patch_done": False,
+    }
+
+    @classmethod
+    def is_loguru_setup_done(cls) -> bool:
+        return cls._config["loguru_setup_done"]
+
+    @classmethod
+    def set_loguru_setup_done(cls) -> None:
+        cls._config["loguru_setup_done"] = True
+
+    @classmethod
+    def is_monkey_patch_done(cls) -> bool:
+        return cls._config["monkey_patch_done"]
+
+    @classmethod
+    def set_monkey_patch_done(cls) -> None:
+        cls._config["monkey_patch_done"] = True
+
+
+@asynccontextmanager
+async def lifespan(app: ServiceApi) -> AsyncGenerator:
+    # 初始化及退出清理
+
+    # tortoise
+    await Tortoise.init(config=app.settings.relational.tortoise_orm_config)
+
+    yield
+
+    await Tortoise.close_connections()
 
 
 class ServiceApi(FastAPI, ABC):
     code: str
     settings: LocalConfig
+    logger: loguru.Logger
+
+    _default_config = {
+        "default_response_class": AesResponse,
+        "lifespan": lifespan,
+    }
 
     def __init__(self, code: str, settings: LocalConfig, **kwargs) -> None:
-        setup_loguru(LogLevelEnum.DEBUG if settings.project.debug else LogLevelEnum.INFO)
-        patch()
+        if not _ConfigRegistry.is_loguru_setup_done():
+            setup_loguru(LogLevelEnum.DEBUG if settings.project.debug else LogLevelEnum.INFO)
+            _ConfigRegistry.set_loguru_setup_done()
+        if not _ConfigRegistry.is_monkey_patch_done():
+            patch()
+            _ConfigRegistry.set_monkey_patch_done()
+        kwargs = merge_dict(kwargs, self._default_config)
         super().__init__(**kwargs)
         self.code = code.title()
         self.settings = settings
+        self.logger = loguru.logger.bind(code=self.code)
 
     def enable_sentry(self) -> None:
         if not self.settings.project.sentry_dsn:
@@ -88,17 +139,5 @@ class ServiceApi(FastAPI, ABC):
 
     @abstractmethod
     async def before_server_start(self) -> None:
-        # 生产环境启动前执行代码
+        # 生产环境启动前执行代码, 如数据库迁移等
         raise NotImplementedError
-
-
-@asynccontextmanager
-async def lifespan(app: ServiceApi) -> AsyncGenerator:
-    # 初始化及退出清理
-
-    # tortoise
-    await Tortoise.init(config=app.settings.relational.tortoise_orm_config)
-
-    yield
-
-    await Tortoise.close_connections()

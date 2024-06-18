@@ -138,20 +138,11 @@ class GunicornLogger(glogging.Logger):
         )
 
 
-_loguru_setup_done = False
-
-
 def setup_loguru(
     level: LogLevelEnum = LogLevelEnum.INFO,
     sink: TextIO | Callable[[loguru.Record], None] | logging.Handler = json_sink,
 ) -> None:
     # loguru
-    global _loguru_setup_done  # ruff: noqa: PLW0603
-    if _loguru_setup_done:
-        return
-
-    _loguru_setup_done = True
-
     logger.remove()
     # logger.add(
     #     sink=os.path.join(

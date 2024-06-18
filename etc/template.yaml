@@ -30,10 +30,7 @@ project:
   unique_code:
     user_center: "UserCenter"
     asset_center: "AssetCenter"
-  name: "FastService"
-  description: "FastService"
   debug: True
   environment: "development"
-  log_dir: "logs/"
   sentry_dsn: null
   swagger_servers: []

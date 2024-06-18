@@ -225,6 +225,13 @@ def filter_dict(
     return new_dict
 
 
+def merge_dict(dict1: dict, dict2: dict) -> dict:
+    # 遍历第二个字典，只有当键不存在于第一个字典中时，才更新第一个字典
+    for key, value in dict2.items():
+        dict1.setdefault(key, value)
+    return dict1
+
+
 def flatten_list(element: Iterable) -> list[Any]:
     """Iterable 递归展开成一级列表."""
     flat_list = []
