@@ -65,7 +65,7 @@ class ServiceApi(FastAPI, ABC):
         "lifespan": lifespan,
     }
 
-    def __init__(self, code: str, settings: LocalConfig, **kwargs) -> None:
+    def __init__(self, code: str, title: str, description: str, settings: LocalConfig, **kwargs) -> None:
         if not _ConfigRegistry.is_loguru_setup_done():
             setup_loguru(LogLevelEnum.DEBUG if settings.project.debug else LogLevelEnum.INFO)
             _ConfigRegistry.set_loguru_setup_done()
@@ -73,7 +73,9 @@ class ServiceApi(FastAPI, ABC):
             patch()
             _ConfigRegistry.set_monkey_patch_done()
         kwargs = merge_dict(kwargs, self._default_config)
-        super().__init__(**kwargs)
+        if "debug" not in kwargs:
+            kwargs["debug"] = settings.project.debug
+        super().__init__(title=title, description=description, **kwargs)
         self.code = code.title()
         self.settings = settings
         self.logger = loguru.logger.bind(code=self.code)

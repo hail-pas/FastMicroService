@@ -20,7 +20,13 @@ class UserCenterServiceApi(ServiceApi):
         await command.upgrade(run_in_transaction=True)
 
 
-user_center_api = UserCenterServiceApi(code="UserCenter", settings=local_configs)
+user_center_api = UserCenterServiceApi(
+    code="UserCenter",
+    settings=local_configs,
+    title="用户中心",
+    description="统一用户管理中心",
+    version="1.0.0",
+)
 
 user_center_api.setup_middleware(roster=middleware_roster)
 user_center_api.setup_exception_handlers(roster=exception_handler_roster)

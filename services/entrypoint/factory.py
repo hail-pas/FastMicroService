@@ -18,7 +18,7 @@ class RootApi(ServiceApi):
             await command.upgrade(run_in_transaction=True)
 
 
-service_api = RootApi(code="ServiceRoot", settings=local_configs)
+service_api = RootApi(code="ServiceRoot", settings=local_configs, title="主服务", description="主服务", version="1.0.0")
 
 service_api.mount(
     "/user",
