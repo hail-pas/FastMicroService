@@ -13,6 +13,9 @@ class Company(BaseModel):
     )
     industry = fields.CharField(max_length=50, null=True, description="企业所属行业")
 
+    class PydanticMeta:
+        backward_relations = False
+
     class Meta:
         table_description = "企业"
         ordering = ["-id"]
