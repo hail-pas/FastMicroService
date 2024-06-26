@@ -13,7 +13,7 @@ from common.enums import ResponseCodeEnum
 from common.types import datetime
 from common.utils import datetime_now
 from common.context import ContextKeyEnum
-from common.schemas import Pager
+from common.schemas import Pager, CRUDPager
 
 
 class AesResponse(ORJSONResponse):
@@ -108,14 +108,14 @@ class PageData(BaseModel, Generic[DataT]):
     page_info: PageInfo
     records: Sequence[DataT]
 
-    def __init__(self, records: Sequence[DataT], total_count: int, pager: Pager) -> None:
+    def __init__(self, records: Sequence[DataT], total_count: int, pager: Pager | CRUDPager) -> None:
         super().__init__(
             page_info=generate_page_info(total_count, pager),
             records=records,
         )
 
 
-def generate_page_info(total_count: int, pager: Pager) -> PageInfo:
+def generate_page_info(total_count: int, pager: Pager | CRUDPager) -> PageInfo:
     return PageInfo(
         total_page=ceil(total_count / pager.limit),
         total_count=total_count,

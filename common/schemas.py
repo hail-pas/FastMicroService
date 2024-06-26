@@ -1,4 +1,5 @@
 from pydantic import BaseModel, PositiveInt, conint
+from tortoise.contrib.pydantic import PydanticModel
 
 
 class Pager(BaseModel):
@@ -6,10 +7,14 @@ class Pager(BaseModel):
     offset: conint(ge=0) = 0  # type: ignore
 
 
-class CURDPager(Pager):
+class CRUDPager(Pager):
     order_by: set[str] = set()
     search: str | None = None
     selected_fields: set[str] | None = None
+    available_search_fields: set[str] | None = None
+    list_schema: type[PydanticModel]
+    # available_sort_fields: set[str] | None = None
+    # available_search_fields: set[str] | None = None
 
 
 class IdsSchema(BaseModel):

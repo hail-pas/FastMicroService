@@ -4,6 +4,7 @@ import importlib
 
 from IPython import start_ipython
 from traitlets.config import Config
+from common.monkey_patch import patch
 from conf.config import local_configs
 from tortoise import Tortoise
 
@@ -19,6 +20,7 @@ async def init_ctx_relational() -> None:
 
 async def init_ctx() -> None:
 
+    patch()
     await init_ctx_relational()
     # await init_ctx_redis()
 

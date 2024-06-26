@@ -3,7 +3,6 @@ from typing import Any
 from collections.abc import Callable
 
 from fastapi import WebSocket
-from pydantic import ValidationError as PydanticValidationError
 from fastapi.responses import HTMLResponse
 from fastapi.exceptions import RequestValidationError
 from starlette.requests import Request
@@ -131,7 +130,7 @@ async def validation_exception_handler(
     return AesResponse(
         content=Resp(
             code=ResponseCodeEnum.failed,
-            message=f"{field_name}:{message}",
+            message=f"{field_name}: {message}",
             data=exc.errors(),  # {"data": exc.body, "errors": error_list},
         ).model_dump_json(),
     )
@@ -155,7 +154,7 @@ async def custom_validation_error_handler(
 
 roster: list[tuple[type[Exception], Callable[..., Any]]] = [
     (RequestValidationError, validation_exception_handler),
-    (PydanticValidationError, validation_exception_handler),
+    # (PydanticValidationError, validation_exception_handler),
     # (ValidationError, custom_validation_error_handler),
     # (TortoiseValidationError, tortoise_validation_error_handler),
     (ApiException, api_exception_handler),

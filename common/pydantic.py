@@ -2,60 +2,60 @@ from __future__ import annotations
 
 import inspect
 from typing import Literal
+from datetime import datetime
 from collections.abc import Callable
 
 import pydantic
-from fastapi import Form, Query
+from fastapi import Body, Form, Query
 from fastapi.params import _Unset
 from tortoise.contrib.pydantic.base import PydanticModel
 
-from common.utils import filter_dict
+from common.utils import DATETIME_FORMAT_STRING
 
 
-def optional(*fields) -> Callable[[pydantic.BaseModel], pydantic.BaseModel]:
-    """Decorator function used to modify a pydantic model's fields to all be optional.
-    Alternatively, you can  also pass the field names that should be made optional as arguments
-    to the decorator.
-    Taken from https://github.com/samuelcolvin/pydantic/issues/1223#issuecomment-775363074.
-    """
+def optional(*fields: str) -> Callable[[type[pydantic.BaseModel]], type[pydantic.BaseModel]]:
+    def dec(cls: type[pydantic.BaseModel]) -> type[pydantic.BaseModel]:
+        new_fields = {}
+        for field in fields or cls.model_fields.keys():
+            if field in cls.model_fields:
+                field_info = cls.model_fields[field]
+                field_info.default = None
+                new_fields[field] = (field_info.annotation, field_info)
+            else:
+                raise ValueError(f"Field {field} not found in model {cls.__name__}")
 
-    def dec(_cls: pydantic.BaseModel) -> pydantic.BaseModel:
-        for field in fields:
-            _cls.model_fields[field].required = False  # type: ignore
-        return _cls
-
-    if fields and inspect.isclass(fields[0]) and issubclass(fields[0], pydantic.BaseModel):
-        cls = fields[0]
-        fields = cls.model_fields  # type: ignore
-        return dec(cls)  # type: ignore
+        return pydantic.create_model(cls.__name__, __base__=cls, **new_fields)  # type: ignore
 
     return dec
 
 
-def sub_fields_model(
+def create_sub_fields_model(
     base_model: type[pydantic.BaseModel] | type[PydanticModel],
     fields: set[str],
 ) -> type[pydantic.BaseModel] | type[PydanticModel]:
-    class ToModel(base_model):  # type: ignore
-        pass
+    model_fields = {}
 
-    ToModel.__fields__ = filter_dict(
-        dict_obj=ToModel.__fields__,
-        callback=lambda k, _: k in fields,  # type: ignore
-    )
-    ToModel.__config__.fields = filter_dict(
-        dict_obj=ToModel.__config__.fields,
-        callback=lambda k, _: k in fields,  # type: ignore
-    )
-    return ToModel
+    for field_name, field in base_model.model_fields.items():
+        if field_name in fields:
+            model_fields[field_name] = (field.annotation, field)
+
+    return pydantic.create_model(f"{base_model.__name__}Subset", **model_fields)  # type: ignore
 
 
 def create_parameter_from_field_info(
-    type_: Literal["query", "form"],
+    type_: Literal["query", "form", "body"],
     field_name: str,
     field_info: pydantic.fields.FieldInfo,
 ) -> inspect.Parameter:
-    fastapi_parameter_cls = Form if type_ == "form" else Query
+    match type_:
+        case "query":
+            fastapi_parameter_cls = Query
+        case "form":
+            fastapi_parameter_cls = Form
+        case "body":
+            fastapi_parameter_cls = Body
+        case _:
+            raise ValueError(f"Invalid type: {type_}")
 
     attribute_set = field_info._attributes_set
 
@@ -65,10 +65,10 @@ def create_parameter_from_field_info(
         default=fastapi_parameter_cls(  # type: ignore
             default=field_info.default,
             default_factory=field_info.default_factory,
-            media_type="application/x-www-form-urlencoded",
+            media_type="application/x-www-form-urlencoded" if type_ != "body" else "application/json",
             alias=field_info.alias,
             alias_priority=field_info.alias_priority,
-            validation_alias=field_info.validation_alias,
+            validation_alias=field_info.validation_alias,  # type: ignore
             serialization_alias=field_info.serialization_alias,
             title=field_info.title,
             description=field_info.description,
@@ -85,7 +85,7 @@ def create_parameter_from_field_info(
             decimal_places=attribute_set.get("decimal_places") or _Unset,
             example=field_info.examples,
             deprecated=field_info.deprecated,
-            json_schema_extra=field_info.json_schema_extra,
+            json_schema_extra=field_info.json_schema_extra,  # type: ignore
             # min_length=field_info.metadata[0].min_length,
         ),
         annotation=field_info.annotation,
@@ -122,3 +122,9 @@ def as_query(cls: type[pydantic.BaseModel]) -> type[pydantic.BaseModel]:
     as_query_func.__signature__ = sig  # type: ignore
     cls.as_query = as_query_func  # type: ignore
     return cls
+
+
+CommonConfigDict = pydantic.ConfigDict(
+    from_attributes=True,
+    json_encoders={datetime: lambda v: v.strftime(DATETIME_FORMAT_STRING)},
+)
