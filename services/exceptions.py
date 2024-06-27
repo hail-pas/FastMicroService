@@ -10,52 +10,11 @@ from starlette.exceptions import HTTPException
 
 from conf.config import local_configs
 from common.responses import Resp, AesResponse, ResponseCodeEnum
+from common.exceptions import ApiException, ValidationError
 from common.constant.validate import (
     ValidationErrorMsgTemplates,
     DirectValidateErrorMsgTemplates,
 )
-
-
-class ApiException(Exception):
-    """非 0 的业务错误."""
-
-    code: ResponseCodeEnum = ResponseCodeEnum.failed
-    message: str
-
-    def __init__(
-        self,
-        message: str,
-        code: ResponseCodeEnum = ResponseCodeEnum.failed,
-    ) -> None:
-        self.code = code
-        self.message = message
-
-
-class ValidationError(Exception):
-    """自定义校验异常
-    1. 覆盖tortoise Validation Error, 用于自定义提示语
-    """
-
-    error_type: str
-    error_message_template: str
-    ctx: dict  # value
-
-    def __init__(
-        self,
-        error_type: str,
-        error_message_template: str,
-        ctx: dict,
-    ) -> None:
-        self.error_type = error_type
-        self.error_message_template = error_message_template
-        self.ctx = ctx
-
-    def __str__(self) -> str:
-        msg = self.error_message_template.format(**self.ctx)
-        field_name = self.ctx.get("field_name")
-        if field_name:
-            msg = f"{field_name}: {msg}"
-        return msg
 
 
 async def api_exception_handler(
@@ -155,7 +114,7 @@ async def custom_validation_error_handler(
 roster: list[tuple[type[Exception], Callable[..., Any]]] = [
     (RequestValidationError, validation_exception_handler),
     # (PydanticValidationError, validation_exception_handler),
-    # (ValidationError, custom_validation_error_handler),
+    (ValidationError, custom_validation_error_handler),
     # (TortoiseValidationError, tortoise_validation_error_handler),
     (ApiException, api_exception_handler),
     (HTTPException, http_exception_handler),
