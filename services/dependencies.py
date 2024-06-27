@@ -1,12 +1,24 @@
-from collections.abc import Callable
+from typing import Generic, TypeVar, Annotated
+from collections.abc import Callable, Awaitable
 
-from fastapi import Query
+from fastapi import Query, Depends, Request, Security
 from pydantic import PositiveInt
 from tortoise.models import Model
+from fastapi.security import HTTPBearer, APIKeyHeader, HTTPAuthorizationCredentials
+from fastapi.security.utils import get_authorization_scheme_param
 from tortoise.contrib.pydantic import PydanticModel
 
+from common.enums import ResponseCodeEnum
 from common.schemas import CRUDPager
 from services.exceptions import ApiException
+from common.constant.messages import (
+    ApikeyMissingMsg,
+    AuthorizationHeaderInvalidMsg,
+    AuthorizationHeaderMissingMsg,
+    AuthorizationHeaderTypeErrorMsg,
+)
+
+T = TypeVar("T")
 
 
 def paginate(
@@ -62,3 +74,88 @@ def paginate(
         )
 
     return get_pager
+
+
+class TheBearer(HTTPBearer):
+    async def __call__(
+        self: "TheBearer",
+        request: Request,  # WebSocket
+    ) -> HTTPAuthorizationCredentials:  # _authorization: Annotated[Optional[str], Depends(oauth2_scheme)]
+        authorization: str | None = request.headers.get("Authorization")
+        if not authorization:
+            raise ApiException(
+                code=ResponseCodeEnum.unauthorized,
+                message=AuthorizationHeaderMissingMsg,
+            )
+        scheme, credentials = get_authorization_scheme_param(authorization)
+        if not (authorization and scheme and credentials):
+            raise ApiException(
+                code=ResponseCodeEnum.unauthorized,
+                message=AuthorizationHeaderInvalidMsg,
+            )
+        if scheme != "Bearer" and self.auto_error:
+            raise ApiException(
+                code=ResponseCodeEnum.unauthorized,
+                message=AuthorizationHeaderTypeErrorMsg,
+            )
+        return HTTPAuthorizationCredentials(
+            scheme=scheme,
+            credentials=credentials,
+        )
+
+
+auth_schema = TheBearer()
+
+
+class JwtTokenRequired(Generic[T]):
+    """完全自定义校验"""
+
+    validator: Callable[
+        [Request, HTTPAuthorizationCredentials],
+        Awaitable[T],
+    ]
+
+    def __init__(
+        self,
+        validator: Callable[
+            [Request, HTTPAuthorizationCredentials],
+            Awaitable[T],
+        ],
+    ) -> None:
+        self.validator = validator  # type: ignore
+
+    async def __call__(
+        self,
+        request: Request,
+        token: Annotated[HTTPAuthorizationCredentials, Depends(auth_schema)],
+    ) -> T:
+        return await self.validator(request, token)
+
+
+class ApiKeyRequired(Generic[T]):
+    validator: Callable[[Request, str], Awaitable[T]]
+
+    def __init__(
+        self,
+        validator: Callable[[Request, str], Awaitable[T]],
+    ) -> None:
+        self.validator = validator
+
+    async def __call__(
+        self,
+        request: Request,
+        api_key: str = Security(
+            APIKeyHeader(
+                name="X-Api-Key",
+                scheme_name="API key header",
+                auto_error=False,
+            ),
+        ),
+    ) -> T:
+        if not api_key:
+            raise ApiException(
+                message=ApikeyMissingMsg,
+                code=ResponseCodeEnum.unauthorized,
+            )
+
+        return await self.validator(request, api_key)

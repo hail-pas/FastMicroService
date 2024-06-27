@@ -4,11 +4,11 @@ from decimal import Decimal
 from tortoise import validators
 
 from services.exceptions import ValidationError
-from common.constant.validate import ValidationErrorMsgTemplates
+from common.constant.validate import ValidateErrorTypeEnum, ValidationErrorMsgTemplates
 
 
 class RegexValidator(validators.RegexValidator):
-    error_type: str = "ValidateErrorTypeEnum"
+    error_type: str = ValidateErrorTypeEnum.string_pattern_mismatch
     error_message_template: str = ValidationErrorMsgTemplates[error_type]  # type: ignore
     ctx: dict
     default_ctx: dict
@@ -41,7 +41,7 @@ class RegexValidator(validators.RegexValidator):
 
 
 class MaxLengthValidator(validators.MaxLengthValidator):
-    error_type: str = "value_error.any_str.max_length"
+    error_type: str = ValidateErrorTypeEnum.string_too_long
     error_message_template: str = ValidationErrorMsgTemplates[error_type]  # type: ignore
     ctx: dict
     default_ctx: dict
@@ -80,14 +80,14 @@ class MaxLengthValidator(validators.MaxLengthValidator):
                 error_message_template=self.error_message_template,
                 ctx={
                     "value": value,
-                    "limit_value": self.max_length,
+                    "max_length": self.max_length,
                     **self.default_ctx,
                 },
             )
 
 
 class MinLengthValidator(validators.MinLengthValidator):
-    error_type: str = "value_error.any_str.min_length"
+    error_type: str = ValidateErrorTypeEnum.string_too_short
     error_message_template: str = ValidationErrorMsgTemplates[error_type]  # type: ignore
     ctx: dict
     default_ctx: dict
@@ -126,14 +126,14 @@ class MinLengthValidator(validators.MinLengthValidator):
                 error_message_template=self.error_message_template,
                 ctx={
                     "value": value,
-                    "limit_value": self.min_length,
+                    "min_length": self.min_length,
                     **self.default_ctx,
                 },
             )
 
 
 class MaxValueValidator(validators.MaxValueValidator):
-    error_type: str = "value_error.number.not_le"
+    error_type: str = ValidateErrorTypeEnum.less_than_equal
     error_message_template: str = ValidationErrorMsgTemplates[error_type]  # type: ignore
     ctx: dict
     default_ctx: dict
@@ -152,8 +152,8 @@ class MaxValueValidator(validators.MaxValueValidator):
     def __call__(self, value: int | float | Decimal) -> None:
         if not isinstance(value, int | float | Decimal):
             raise ValidationError(
-                error_type="type_error",
-                error_message_template=ValidationErrorMsgTemplates["type_error"],
+                error_type=ValidateErrorTypeEnum.arguments_type,
+                error_message_template=ValidationErrorMsgTemplates[ValidateErrorTypeEnum.arguments_type],
                 ctx={
                     "value": value,
                     **self.default_ctx,
@@ -166,14 +166,14 @@ class MaxValueValidator(validators.MaxValueValidator):
                 error_message_template=self.error_message_template,
                 ctx={
                     "value": value,
-                    "limit_value": self.max_value,
+                    "le": self.max_value,
                     **self.default_ctx,
                 },
             )
 
 
 class MinValueValidator(validators.MinValueValidator):
-    error_type: str = "value_error.number.not_ge"
+    error_type: str = ValidateErrorTypeEnum.greater_than_equal
     error_message_template: str = ValidationErrorMsgTemplates[error_type]  # type: ignore
     ctx: dict
     default_ctx: dict
@@ -192,8 +192,8 @@ class MinValueValidator(validators.MinValueValidator):
     def __call__(self, value: int | float | Decimal) -> None:
         if not isinstance(value, int | float | Decimal):
             raise ValidationError(
-                error_type="type_error",
-                error_message_template=ValidationErrorMsgTemplates["type_error"],
+                error_type=ValidateErrorTypeEnum.arguments_type,
+                error_message_template=ValidationErrorMsgTemplates[ValidateErrorTypeEnum.arguments_type],
                 ctx={
                     "value": value,
                     **self.default_ctx,
@@ -206,7 +206,7 @@ class MinValueValidator(validators.MinValueValidator):
                 error_message_template=self.error_message_template,
                 ctx={
                     "value": value,
-                    "limit_value": self.min_value,
+                    "ge": self.min_value,
                     **self.default_ctx,
                 },
             )
