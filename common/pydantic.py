@@ -10,7 +10,7 @@ from fastapi import Body, Form, Query
 from fastapi.params import _Unset
 from tortoise.contrib.pydantic.base import PydanticModel
 
-from common.utils import DATETIME_FORMAT_STRING
+from common.utils import DATETIME_FORMAT_STRING, filter_dict
 
 
 def optional(*fields: str) -> Callable[[type[pydantic.BaseModel]], type[pydantic.BaseModel]]:
@@ -99,6 +99,7 @@ def as_form(cls: type[pydantic.BaseModel]) -> type[pydantic.BaseModel]:
         new_parameters.append(create_parameter_from_field_info("form", field_name, field_info))
 
     async def as_form_func(**data) -> pydantic.BaseModel:
+        data = filter_dict(data, lambda _, v: v is not None)
         return cls(**data)
 
     sig = inspect.signature(as_form_func)
@@ -115,6 +116,7 @@ def as_query(cls: type[pydantic.BaseModel]) -> type[pydantic.BaseModel]:
         new_parameters.append(create_parameter_from_field_info("query", field_name, model_field))
 
     async def as_query_func(**data) -> pydantic.BaseModel:
+        data = filter_dict(data, lambda _, v: v is not None)
         return cls(**data)
 
     sig = inspect.signature(as_query_func)

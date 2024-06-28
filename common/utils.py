@@ -215,7 +215,7 @@ def seconds_to_readable_display(
 
 def filter_dict(
     dict_obj: dict,
-    callback: Callable[[Hashable, Any], dict],
+    callback: Callable[[Hashable, Any], bool],
 ) -> dict:
     """适用于字典的filter."""
     new_dict = {}

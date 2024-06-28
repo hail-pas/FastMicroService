@@ -20,9 +20,9 @@ from services.dependencies import paginate
 unique_error_msg_key_regex = re.compile(r"'(.*?)'")
 
 
-ModelType = TypeVar("ModelType", bound=Model)
+ModelT = TypeVar("ModelT", bound=Model)
 
-PydanticModelType = TypeVar("PydanticModelType", bound=PydanticModel)
+PydanticModelT = TypeVar("PydanticModelT", bound=PydanticModel)
 
 
 def pagination_factory(
@@ -36,7 +36,7 @@ def pagination_factory(
 
 
 async def get_all(
-    queryset: QuerySet[ModelType],  # type: ignore
+    queryset: QuerySet[ModelT],  # type: ignore
     pagination: CRUDPager,
     *args: Q,
     **kwargs: dict,
@@ -69,7 +69,7 @@ async def get_all(
     )
 
 
-async def obj_prefetch_fields(obj: Model, schema: type[PydanticModelType]) -> Model:
+async def obj_prefetch_fields(obj: ModelT, schema: type[PydanticModelT]) -> ModelT:
     db_model = obj.__class__
     _db2fields = defaultdict(list)
     for f in db_model._meta.fetch_fields.intersection(set(schema.model_fields.keys())):
@@ -138,9 +138,9 @@ async def kwargs_clean(
 
 
 async def create_obj(
-    db_model: type[Model],
+    db_model: type[ModelT],
     data: dict,
-) -> Model:
+) -> ModelT:
     data, m2m_data = await kwargs_clean(
         data,
         db_model,
@@ -170,10 +170,10 @@ async def create_obj(
 
 
 async def update_obj(
-    obj: Model,
-    queryset: QuerySet[Model],
+    obj: ModelT,
+    queryset: QuerySet[ModelT],
     data: dict,
-) -> Model:
+) -> ModelT:
     if not data:
         return obj
 
@@ -218,11 +218,11 @@ async def update_obj(
 
 
 async def update(
-    queryset: QuerySet[ModelType],
+    queryset: QuerySet[ModelT],
     id: str | uuid.UUID | int,
     data: dict,
-    pydantic_model_type: type[PydanticModelType],
-) -> Resp[PydanticModelType]:
+    pydantic_model_type: type[PydanticModelT],
+) -> Resp[PydanticModelT]:
     obj = await queryset.get_or_none(
         **{queryset.model._meta.pk_attr: id},
     )
@@ -232,7 +232,7 @@ async def update(
     if data:
         obj = await update_obj(obj, queryset, data)  # type: ignore
     obj = await obj_prefetch_fields(obj, pydantic_model_type)  # type: ignore
-    return Resp[PydanticModelType](data=await pydantic_model_type.from_tortoise_orm(obj))  # type: ignore
+    return Resp[PydanticModelT](data=pydantic_model_type.model_validate(obj))  # type: ignore
 
 
 class DeleteResp(BaseModel):
