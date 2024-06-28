@@ -218,6 +218,8 @@ class BinaryUUIDField(fields.Field[uuid.UUID], uuid.UUID):
         match value:
             case uuid.UUID():
                 return RawSQL(f"UUID_TO_BIN('{value}')")
+            case RawSQL():
+                return value
             case str():
                 return RawSQL(f"UUID_TO_BIN('{uuid.UUID(value)}')")
             case bytes():
