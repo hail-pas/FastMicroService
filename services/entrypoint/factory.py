@@ -18,8 +18,28 @@ class RootApi(ServiceApi):
             await command.upgrade(run_in_transaction=True)
 
 
-service_api = RootApi(code="ServiceRoot", settings=local_configs, title="主服务", description="主服务", version="1.0.0")
+main_swagger_servers = [s.model_dump() for s in local_configs.project.swagger_servers]
+user_center_swagger_servers = []
+alert_center_swagger_servers = []
+for s in local_configs.project.swagger_servers:
+    u_s = s.model_copy()
+    u_s.url = f"{s.url}user"
+    user_center_swagger_servers.append(u_s.model_dump())
+    a_s = s.model_copy()
+    a_s.url = f"{s.url}alert"
+    alert_center_swagger_servers.append(a_s.model_dump())
 
+user_center_api.servers = user_center_swagger_servers
+
+
+service_api = RootApi(
+    code="ServiceRoot",
+    settings=local_configs,
+    title="主服务",
+    description="主服务",
+    version="1.0.0",
+    servers=main_swagger_servers,
+)
 service_api.mount(
     "/user",
     user_center_api,

@@ -45,8 +45,11 @@ async def contex_middleware(
             call_next: RequestResponseEndpoint,
         ) -> Response:
             context = await self.set_context(request)
-            with request_cycle_context(context), logger.contextualize(
-                request_id=context.get(RequestIdPlugin.key),
+            with (
+                request_cycle_context(context),
+                logger.contextualize(
+                    request_id=context.get(RequestIdPlugin.key),
+                ),
             ):
                 profile_secret = request.query_params.get("profile_secret", "")
                 if (

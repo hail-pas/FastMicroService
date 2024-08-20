@@ -5,10 +5,12 @@ from common.utils import generate_random_string
 
 
 class OssFile:
+    _base_path: str = ""
+
     def get_real_path(
         self,
         filepath: str,
-        base_path: str,
+        base_path: str | None = None,
     ) -> str:
         prefix = base_path if base_path else ""
         if not filepath.startswith("/"):

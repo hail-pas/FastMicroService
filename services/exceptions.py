@@ -3,6 +3,7 @@ from typing import Any
 from collections.abc import Callable
 
 from fastapi import WebSocket
+from pydantic import BaseModel
 from fastapi.responses import HTMLResponse
 from fastapi.exceptions import RequestValidationError
 from starlette.requests import Request
@@ -77,7 +78,8 @@ async def validation_exception_handler(
     error = exc.errors()[0]
     error_type = error["type"]
     ctx = error.get("ctx", {})
-    field_name = error["loc"][-1]
+
+    field_name = error["loc"][0] if len(error["loc"]) == 1 else ".".join([str(i) for i in error["loc"][1:]])
 
     if error_type in DirectValidateErrorMsgTemplates:
         field_name, message = DirectValidateErrorMsgTemplates[error_type]
@@ -93,6 +95,29 @@ async def validation_exception_handler(
             data=exc.errors(),  # {"data": exc.body, "errors": error_list},
         ).model_dump_json(),
     )
+
+
+def get_validation_text(exc: RequestValidationError, pyd: BaseModel) -> str:
+    error = exc.errors()[0]
+    error_type = error["type"]
+    ctx = error.get("ctx", {})
+
+    if len(error["loc"]):
+        field_name = error["loc"][0]
+    else:
+        field_name = ".".join([str(i) for i in error["loc"][1:]])
+
+    if error_type in DirectValidateErrorMsgTemplates:
+        field_name, message = DirectValidateErrorMsgTemplates[error_type]
+        message = message.format(**ctx)
+    else:
+        message = ValidationErrorMsgTemplates[error_type]
+        message = message.format(**ctx)
+    field_info = pyd.model_fields.get(field_name)
+    if hasattr(field_info, "description"):
+        return f"{field_info.description}错误"
+        # return f"{field_info.description}({field_name}): {message}"
+    return f"{field_name}错误"
 
 
 async def custom_validation_error_handler(

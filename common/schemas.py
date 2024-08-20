@@ -12,7 +12,7 @@ class CRUDPager(Pager):
     search: str | None = None
     selected_fields: set[str] | None = None
     available_search_fields: set[str] | None = None
-    list_schema: type[PydanticModel]
+    list_schema: type[PydanticModel | BaseModel]
     # available_sort_fields: set[str] | None = None
     # available_search_fields: set[str] | None = None
 

@@ -6,11 +6,14 @@ from typing import Any, TypeVar
 from urllib.parse import urlparse
 from collections.abc import Callable
 
+import orjson
 from tortoise import fields, timezone, validators
 from tortoise.models import Model
 from tortoise.timezone import get_use_tz, get_default_timezone
 from tortoise.exceptions import ConfigurationError
 from tortoise.expressions import RawSQL
+
+from common.tortoise.contrib.pydantic.types import GeoDataType
 
 
 class StorageMixin:
@@ -63,13 +66,13 @@ class FileField(fields.CharField):
     def to_db_value(self, value: str, instance: "FileField") -> str:  # type: ignore
         if not value:
             return ""
-        if value.startswith("http"):
-            value = self._file_storage.get_stored_path(value)
-        extension = value.split(".")[-1]
-        if self._extensions and extension not in self._extensions:
-            raise ValueError(
-                f"extension not supported, required extension in {self._extensions}",
-            )
+        # if value.startswith("http"):
+        #     value = self._file_storage.get_stored_path(value)
+        # extension = value.split(".")[-1]
+        # if self._extensions and extension not in self._extensions:
+        #     raise ValueError(
+        #         f"extension not supported, required extension in {self._extensions}",
+        #     )
         return value
 
     def to_python_value(self, value: str) -> str | None:
@@ -216,10 +219,10 @@ class BinaryUUIDField(fields.Field[uuid.UUID], uuid.UUID):
 
     def to_db_value(self, value: uuid.UUID | str | bytes | None, instance: type[Model] | Model) -> RawSQL | None:
         match value:
-            case uuid.UUID():
-                return RawSQL(f"UUID_TO_BIN('{value}')")
             case RawSQL():
                 return value
+            case uuid.UUID():
+                return RawSQL(f"UUID_TO_BIN('{value}')")
             case str():
                 return RawSQL(f"UUID_TO_BIN('{uuid.UUID(value)}')")
             case bytes():
@@ -229,7 +232,7 @@ class BinaryUUIDField(fields.Field[uuid.UUID], uuid.UUID):
             case _:
                 raise ConfigurationError("This field only accepts UUID values")
 
-    def to_python_value(self, value: uuid.UUID | str | bytes | None) -> uuid.UUID | None:
+    def to_python_value(self, value: str | None) -> uuid.UUID | None:
         match value:
             case uuid.UUID():
                 return value
@@ -241,3 +244,27 @@ class BinaryUUIDField(fields.Field[uuid.UUID], uuid.UUID):
                 return None
             case _:
                 raise ConfigurationError("This field only accepts UUID values")
+
+
+# ! Mysql 8.0; 未处理PostGIS
+class GeometryField(fields.Field):
+    SQL_TYPE = "GEOMETRY"
+
+    def to_db_value(self, value: str | dict | GeoDataType | None, instance: type[Model] | Model) -> RawSQL | None:
+        match value:
+            case RawSQL():
+                return value
+            case str():
+                # return RawSQL(f"ST_GeomFromText('{value}')")
+                return RawSQL(f"ST_GeomFromGeoJSON('{value}')")
+            case dict():
+                return RawSQL(f"ST_GeomFromGeoJSON('{orjson.dumps(value).decode()}')")
+            case GeoDataType():
+                return RawSQL(f"ST_GeomFromGeoJSON('{orjson.dumps(value.model_dump(by_alias=True)).decode()}')")
+            case None:
+                return None
+            case _:
+                raise ConfigurationError("This field only accepts str or None")
+
+    def to_python_value(self, value: Any | None) -> str | None:
+        return value

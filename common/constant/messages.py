@@ -17,6 +17,5 @@ ApikeyMissingMsg = "未携带apikey"
 ApikeyInvalidMsg = "apikey无效"
 
 # validations error msg
-ValidateFailedMsg = "%s校验不通过"
 TimestampExpiredMsg = "请求已过期"
 SignCheckErrorMsg = "签名校验失败"

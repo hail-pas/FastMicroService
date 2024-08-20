@@ -1,3 +1,6 @@
+import logging
+import os
+import signal
 import sys
 import argparse
 import importlib
@@ -8,12 +11,25 @@ sys.path.append(".")  # 将当前目录加入到环境变量中
 import asyncio  # noqa
 
 import gunicorn.app.base  # type:ignore
+from loguru import logger  # type:ignore
 
+# from common.log import setup_loguru
 from conf.config import local_configs  # noqa
 from common.fastapi import ServiceApi
 
 """FastAPI"""
 
+def handle_sigterm(signum, frame):
+    logging.error(f"Worker (pid:{os.getpid()}) was sent SIGTERM!")
+    sys.exit(0)
+
+# Function to set up loguru and standard logging
+def setup_logging():
+    # Setup loguru
+    logger.remove()  # Remove all loguru handlers
+
+    # Reconfigure the signal handling for the worker
+    signal.signal(signal.SIGTERM, handle_sigterm)
 
 class FastApiApplication(gunicorn.app.base.BaseApplication):
     def __init__(self, app: ServiceApi, options: dict | None = None) -> None:
@@ -52,7 +68,14 @@ def post_fork(server: Any, worker: Any) -> None:  # ruff: noqa
     #     )
 
     #     agent.start()
-    pass
+    # setup_logging()
+    ...
+
+
+# Pre-fork hook to setup logging before workers are forked
+def pre_fork(server, worker):
+    ...
+    # setup_logging()
 
 
 def import_app(app_path: str) -> ServiceApi:
@@ -93,14 +116,15 @@ if __name__ == "__main__":
     options = {
         "bind": f"{local_configs.server.address.host}:{local_configs.server.address.port}",
         "workers": local_configs.server.worker_number,
-        "worker_class": "uvicorn.workers.UvicornWorker",
+        # "worker_class": "uvicorn.workers.UvicornWorker",
+        "worker_class": "uvicorn.workers.UvicornH11Worker",
         "debug": local_configs.project.debug,
         "log_level": "debug" if local_configs.project.debug else "info",
         "max_requests": 4096,  # # 最大请求数之后重启worker，防止内存泄漏
         "max_requests_jitter": 512,  # 随机重启防止所有worker一起重启：randint(0, max_requests_jitter)
         "graceful_timeout": 120,
         "timeout": 180,
-        "logger_class": "common.log.GunicornLogger",
+        # "logger_class": "common.log.GunicornLogger",
         # "config": "entrypoint.gunicorn_conf.py",
         # "post_fork": "entrypoint.main.post_fork",
     }

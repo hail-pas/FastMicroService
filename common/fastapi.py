@@ -43,8 +43,20 @@ class _ConfigRegistry:
         cls._config["monkey_patch_done"] = True
 
 
+# @asynccontextmanager
+# async def lifespan(app: ServiceApi) -> AsyncGenerator:
+#     # 初始化及退出清理
+
+#     # tortoise
+#     await Tortoise.init(config=app.settings.relational.tortoise_orm_config)
+
+#     yield
+
+#     await Tortoise.close_connections()
+
+
 @asynccontextmanager
-async def lifespan(app: ServiceApi) -> AsyncGenerator:
+async def lifespan(app: FastAPI) -> AsyncGenerator:
     # 初始化及退出清理
 
     # tortoise
@@ -76,7 +88,8 @@ class ServiceApi(FastAPI, ABC):
         if "debug" not in kwargs:
             kwargs["debug"] = settings.project.debug
         super().__init__(title=title, description=description, **kwargs)
-        self.code = code.title()
+        # self.code = code.title()
+        self.code = code
         self.settings = settings
         self.logger = loguru.logger.bind(code=self.code)
 

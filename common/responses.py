@@ -1,19 +1,26 @@
 # ruff: noqa: RET504
 from math import ceil
 from typing import Self, Generic, TypeVar
+from datetime import datetime
 from collections.abc import Sequence
 
 import orjson
-from loguru import logger
-from pydantic import Field, BaseModel, ValidationInfo, field_validator, model_validator
+from pydantic import (
+    Field,
+    BaseModel,
+    ConfigDict,
+    ValidationInfo,
+    field_validator,
+    model_validator,
+)
 from fastapi.responses import ORJSONResponse
 from starlette_context import context
 
 from common.enums import ResponseCodeEnum
-from common.types import datetime
-from common.utils import datetime_now
+from common.utils import DATEMINUTE_FORMAT_STRING, datetime_now
 from common.context import ContextKeyEnum
 from common.schemas import Pager, CRUDPager
+from common.pydantic import CommonConfigDict
 
 
 class AesResponse(ORJSONResponse):
@@ -66,7 +73,6 @@ class Resp(BaseModel, Generic[DataT]):
     @field_validator("trace_id")
     @classmethod
     def set_trace_id(cls, value: str, info: ValidationInfo) -> str:
-        logger.info(f"set trace_id: {value}")
         if not value:
             value = str(context.get(ContextKeyEnum.request_id.value, ""))
         return value
@@ -89,6 +95,15 @@ class Resp(BaseModel, Generic[DataT]):
         code: int = ResponseCodeEnum.failed.value,
     ) -> Self:
         return cls(code=code, message=message)
+
+    model_config = CommonConfigDict
+
+
+class SpecialResp(Resp):
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_encoders={datetime: lambda v: v.strftime(DATEMINUTE_FORMAT_STRING)},
+    )
 
 
 class SimpleSuccess(Resp):

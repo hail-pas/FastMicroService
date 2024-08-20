@@ -2,8 +2,12 @@ import os
 import hmac
 import base64
 import binascii
+from typing import Any, Generic, TypeVar
+from collections.abc import Mapping
 
 import orjson
+from jose import jwt, constants
+from pydantic import BaseModel
 from Cryptodome import Random
 from Cryptodome.Hash import MD5, SHA1, SHA256
 from passlib.context import CryptContext  # type: ignore
@@ -22,9 +26,10 @@ class AESUtil:
         style: str = "pkcs7",
         mode: int = AES.MODE_ECB,
     ) -> None:
+        """128位（16字节）、192位（24字节）或256位（32字节）"""
         self.mode = mode
         self.style = style
-        self.key = base64.b64decode(key.encode())
+        self.key = key.encode()
 
     def encrypt_data(self, data: str) -> str:
         aes = AES.new(self.key, self.mode)  # type: ignore
@@ -235,3 +240,41 @@ class PasswordUtil:
     @classmethod
     def get_password_hash(cls, plain_password: str) -> str:
         return cls.pwd_context.hash(plain_password)  # type: ignore
+
+
+T = TypeVar("T", bound=BaseModel)
+
+
+class JwtUtil(Generic[T]):
+    """jwt 工具."""
+
+    default_algorithm = constants.ALGORITHMS.RS256
+
+    def get_jwk_by_kid(kid, jwk_set: dict) -> dict | None:
+        for key in jwk_set["keys"]:
+            if key["kid"] == kid:
+                return key
+        return None
+
+    @classmethod
+    def decode(
+        cls,
+        model: type[T],
+        token: str | bytes,
+        key: str | bytes | Mapping[str, Any],
+        algorithms: str = None,
+        options: dict | None = None,
+        audience: str | None = None,
+        issuer: str | None = None,
+        subject: str | None = None,
+    ) -> T:
+        payload = jwt.decode(
+            token=token,
+            key=key,
+            algorithms=algorithms if algorithms else cls.default_algorithm,
+            options=options,
+            audience=audience,
+            issuer=issuer,
+            subject=subject,
+        )
+        return model(**payload)

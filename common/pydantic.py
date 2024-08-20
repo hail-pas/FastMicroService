@@ -8,7 +8,7 @@ from collections.abc import Callable
 import pydantic
 from fastapi import Body, Form, Query
 from fastapi.params import _Unset
-from tortoise.contrib.pydantic.base import PydanticModel
+from common.tortoise.contrib.pydantic.creator import PydanticModel
 
 from common.utils import DATETIME_FORMAT_STRING, filter_dict
 
@@ -20,7 +20,7 @@ def optional(*fields: str) -> Callable[[type[pydantic.BaseModel]], type[pydantic
             if field in cls.model_fields:
                 field_info = cls.model_fields[field]
                 field_info.default = None
-                new_fields[field] = (field_info.annotation, field_info)
+                new_fields[field] = (field_info.annotation | None, field_info)
             else:
                 raise ValueError(f"Field {field} not found in model {cls.__name__}")
 
@@ -39,7 +39,11 @@ def create_sub_fields_model(
         if field_name in fields:
             model_fields[field_name] = (field.annotation, field)
 
-    return pydantic.create_model(f"{base_model.__name__}Subset", **model_fields)  # type: ignore
+    sub_mdoel = pydantic.create_model(f"{base_model.__name__}Subset", **model_fields, __base__=PydanticModel) # type: ignore
+
+    for k, v in base_model.model_config.items():
+        sub_mdoel.model_config[k] = v
+    return sub_mdoel
 
 
 def create_parameter_from_field_info(

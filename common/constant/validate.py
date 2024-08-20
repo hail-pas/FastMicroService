@@ -24,6 +24,8 @@ class ValidateErrorTypeEnum(str, Enum):
     tuple_type = "tuple_type"
     url_type = "url_type"
     uuid_type = "uuid_type"
+    model_attributes_type = "model_attributes_type"
+    float_type = "float_type"
 
     # string_error
     string_too_short = "string_too_short"
@@ -45,6 +47,7 @@ class ValidateErrorTypeEnum(str, Enum):
     uuid_parsing = "uuid_parsing"
 
     # value_error
+    value_error = "value_error"
     greater_than = "greater_than"
     multiple_of = "multiple_of"
     date_future = "date_future"
@@ -70,6 +73,7 @@ class ValidateErrorTypeEnum(str, Enum):
     url_syntax_violation = "url_syntax_violation"
     url_too_long = "url_too_long"
     uuid_version = "uuid_version"
+    regex_error = "regex_error"
 
     # bytes
     bytes_too_long = "bytes_too_long"
@@ -103,6 +107,8 @@ ValidationErrorMsgTemplates = {
     ValidateErrorTypeEnum.tuple_type: "不是有效的元组",
     ValidateErrorTypeEnum.url_type: "不是有效的URL",
     ValidateErrorTypeEnum.uuid_type: "不是有效的UUID",
+    ValidateErrorTypeEnum.model_attributes_type: "类型错误",
+    ValidateErrorTypeEnum.float_type: "不是有效的浮点数",
     # string_error
     ValidateErrorTypeEnum.string_too_short: "至少{min_length}个字符",
     ValidateErrorTypeEnum.string_too_long: "最多{max_length}个字符",
@@ -121,6 +127,7 @@ ValidationErrorMsgTemplates = {
     ValidateErrorTypeEnum.url_parsing: "请输入正确的URL格式",
     ValidateErrorTypeEnum.uuid_parsing: "请输入正确的UUID格式",
     # value_error
+    ValidateErrorTypeEnum.value_error: "值错误",
     ValidateErrorTypeEnum.multiple_of: "必须是{multiple_of}的整数倍",
     ValidateErrorTypeEnum.date_future: "必须是未来日期",
     ValidateErrorTypeEnum.date_past: "必须是过去日期",

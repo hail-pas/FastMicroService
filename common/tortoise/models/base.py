@@ -75,7 +75,7 @@ class TimeStampModel(Model):
         self.deleted_at = datetime_now()
         await self.save(
             using_db=using_db,
-            update_fields=["deleted"],
+            update_fields=["deleted_at"],
             force_update=True,
         )
 

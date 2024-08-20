@@ -32,7 +32,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 class ConnectionNameEnum(str, enum.Enum):
     """数据库连接名称"""
 
-    default = "default"  # "默认连接"
+    # default = "default"  # "默认连接"
     user_center = "user_center"  # "用户中心连接"
     asset_center = "asset_center"  # "资产中心连接"
 
@@ -64,7 +64,9 @@ class Relational(BaseModel):
                         "password": unquote(self.user_center.password) if self.user_center.password else "",
                         "database": self.user_center.path.strip("/"),  # type: ignore
                         "echo": echo,
-                        "maxsize": 10,
+                        "minsize": 1,  # 连接池的最小连接数
+                        "maxsize": 10,  # 连接池的最大连接数
+                        "pool_recycle": 3600,  # 连接的最大存活时间（秒）
                     },
                 },
                 ConnectionNameEnum.asset_center.value: {
@@ -76,7 +78,9 @@ class Relational(BaseModel):
                         "password": unquote(self.asset_center.password) if self.asset_center.password else "",
                         "database": self.asset_center.path.strip("/"),  # type: ignore
                         "echo": echo,
-                        "maxsize": 10,
+                        "minsize": 1,  # 连接池的最小连接数
+                        "maxsize": 10,  # 连接池的最大连接数
+                        "pool_recycle": 3600,  # 连接的最大存活时间（秒）
                     },
                 },
             },

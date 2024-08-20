@@ -1,7 +1,7 @@
 import re
 from decimal import Decimal
 
-from tortoise import validators
+from tortoise import validators  # ruff: noqa: PLW0406
 
 from common.exceptions import ValidationError
 from common.constant.validate import ValidateErrorTypeEnum, ValidationErrorMsgTemplates

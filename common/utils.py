@@ -7,9 +7,8 @@ import string
 import asyncio
 import gettext
 import datetime
-import importlib
 import posixpath
-from typing import Any, Dict, Union, Literal, Callable, Iterable
+from typing import Any, Dict, Union, Generic, Literal, TypeVar, Callable, Iterable
 from zoneinfo import ZoneInfo
 from collections.abc import Hashable, Coroutine
 
@@ -19,10 +18,11 @@ from cachetools import LRUCache
 from starlette.routing import Mount, Route, WebSocketRoute
 from starlette.requests import Request
 
-from conf.config import BASE_DIR, local_configs
+from conf.config import local_configs
 
 DATETIME_FORMAT_STRING = "%Y-%m-%d %H:%M:%S"
 DATE_FORMAT_STRING = "%Y-%m-%d"
+DATEMINUTE_FORMAT_STRING = "%Y-%m-%d %H:%M"
 
 PI = 3.1415926535897932384626  # π
 
@@ -174,8 +174,11 @@ def seconds_to_readable_display(
     level: Literal[1, 2, 3, 4] = 3,
 ) -> str:
     """将妙转换成human readable展示"""
+    is_negative = False
     if seconds < 0:
-        return "-"
+        seconds = abs(seconds)
+        is_negative = True
+        # return "-"
 
     d = seconds // (60 * 60 * 24)
     seconds -= d * (60 * 60 * 24)
@@ -209,8 +212,10 @@ def seconds_to_readable_display(
     result.append(f"{s}{s_appendix}" if s else "")
 
     result = result[:level]
-
-    return "".join(result)
+    if is_negative:
+        return "-"+"".join(result)
+    else:
+        return "".join(result)
 
 
 def filter_dict(
@@ -314,7 +319,7 @@ def get_enum_field_display(self, field_name: str):
     value = getattr(self, field_name)
     if value is None:
         return value
-    return self._meta.fields_map.get(field_name).enum_type.dict.get(value.value)  # type: ignore
+    return value._dict.get(value.value, value.value)  # type: ignore  # type: ignore
 
 
 def gte_all_uris(
@@ -338,6 +343,7 @@ def gte_all_uris(
                 "path": f"{prefix}{route.path}",  # type: ignore
                 "name": getattr(route, "summary", None) or route.name,  # type: ignore
                 "tags": getattr(route, "tags", []),
+                "operation_id": getattr(route, "operation_id", None),  # type: ignore
             }
             if _filter and not _filter(route):  # type: ignore
                 continue
@@ -495,16 +501,19 @@ def count_left_shifts_from_one(number: int) -> int:
     return shifts
 
 
-class PersistentCache:
+T = TypeVar("T")
+
+
+class PersistentCache(Generic[T]):
     def __init__(self, max_size: int):
         self.cache: LRUCache = LRUCache(maxsize=max_size)
         self.lock = asyncio.Lock()  # 创建锁
 
-    async def get(self, key: str) -> Any | None:
+    async def get(self, key: str) -> T:
         async with self.lock:  # 确保线程安全
             return self.cache.get(key)
 
-    async def set(self, key: str, value: Any):
+    async def set(self, key: str, value: T):
         async with self.lock:  # 确保线程安全
             self.cache[key] = value
 
@@ -534,3 +543,36 @@ class Translator:
     def t(self, key: str, message: str, **kwargs: Dict[str, Any]) -> str:
         translated_message = self.load_translations(key).gettext(message)
         return translated_message.format(**kwargs)
+
+
+def list_dict_to_tuple(data: list | dict) -> list:
+    """
+    前端经纬度转换
+    """
+    if isinstance(data, dict):
+        return list(data.values())
+    result = []
+    for i in data:
+        if isinstance(i, dict):
+            result.append((i["lng"], i["lat"]))
+        else:
+            result.append(list_dict_to_tuple(i))
+
+    return result
+
+
+def list_tuple_to_dict(data: list | tuple) -> list:
+    """
+    前端经纬度转换
+    """
+    if isinstance(data, tuple) and len(data) == 2 and all(isinstance(_i, float) for _i in data):
+        return [dict(zip(["lng", "lat"], reversed(data)))]
+
+    result = []
+    for i in data:
+        if isinstance(i, tuple) and len(i) == 2 and all(isinstance(_i, float) for _i in i):
+            result.append(dict(zip(["lng", "lat"], reversed(i))))
+        else:
+            result.append(list_tuple_to_dict(i))
+
+    return result
