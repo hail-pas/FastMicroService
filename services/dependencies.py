@@ -99,7 +99,7 @@ def paginate(
             if field.startswith("-"):
                 field = field[1:]  # noqa
 
-            if hasattr (model, "model_fields"):
+            if hasattr(model, "model_fields"):
                 available_order_fields = model.model_fields.keys()
             else:
                 available_order_fields = model._meta.db_fields
@@ -133,7 +133,9 @@ def paginate(
 
     return get_pager
 
+
 _account_cache = TTLCache(maxsize=256, ttl=60 * 60)
+
 
 async def _get_account_by_username(username: str) -> Account:
     if username in _account_cache:
@@ -244,4 +246,3 @@ class ApiPermissionCheck:
 
 
 api_permission_check = ApiPermissionCheck()
-

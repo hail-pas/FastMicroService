@@ -99,6 +99,14 @@ class Resp(BaseModel, Generic[DataT]):
     model_config = CommonConfigDict
 
 
+class PyTestResp(Resp):
+    # PyTestResp类继承自Resp类，用于pytest测试响应
+    @model_validator(mode="after")
+    def set_failed_response(self) -> Self:
+        """没有用到fastapi的context, 重写使用时防止报错"""
+        return self
+
+
 class SpecialResp(Resp):
     model_config = ConfigDict(
         from_attributes=True,
@@ -123,9 +131,17 @@ class PageData(BaseModel, Generic[DataT]):
     page_info: PageInfo
     records: Sequence[DataT]
 
-    def __init__(self, records: Sequence[DataT], total_count: int, pager: Pager | CRUDPager) -> None:
+    def __init__(
+        self,
+        records: Sequence[DataT],
+        total_count: int = 0,
+        pager: Pager | CRUDPager = None,
+        page_info: PageInfo | None = None,
+    ) -> None:
+        if page_info is None:
+            page_info = generate_page_info(total_count, pager)
         super().__init__(
-            page_info=generate_page_info(total_count, pager),
+            page_info=page_info,
             records=records,
         )
 

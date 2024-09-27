@@ -66,13 +66,13 @@ class FileField(fields.CharField):
     def to_db_value(self, value: str, instance: "FileField") -> str:  # type: ignore
         if not value:
             return ""
-        # if value.startswith("http"):
-        #     value = self._file_storage.get_stored_path(value)
-        # extension = value.split(".")[-1]
-        # if self._extensions and extension not in self._extensions:
-        #     raise ValueError(
-        #         f"extension not supported, required extension in {self._extensions}",
-        #     )
+        if value.startswith("http"):
+            value = self._file_storage.get_stored_path(value)
+        extension = value.split(".")[-1]
+        if self._extensions and extension not in self._extensions:
+            raise ValueError(
+                f"extension not supported, required extension in {self._extensions}",
+            )
         return value
 
     def to_python_value(self, value: str) -> str | None:

@@ -27,7 +27,7 @@ class RegexValidator(validators.RegexValidator):
 
     def __call__(self, value: str) -> None:
         if value is None:
-            return
+            return None
         if not self.regex.match(value):
             raise ValidationError(
                 error_type=self.error_type,
@@ -38,6 +38,7 @@ class RegexValidator(validators.RegexValidator):
                     **self.default_ctx,
                 },
             )
+        return value
 
 
 class MaxLengthValidator(validators.MaxLengthValidator):

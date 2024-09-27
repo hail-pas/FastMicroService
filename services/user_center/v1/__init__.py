@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from services.userCenter.v1.account.views import router as account_router
+from services.user_center.v1.account.views import router as account_router
 
 router = APIRouter(prefix="/v1")
 

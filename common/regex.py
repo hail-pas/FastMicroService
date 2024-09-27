@@ -13,6 +13,8 @@ EMAIL_REGEX = re.compile(r"(^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$)")
 
 LETTER_DIGITS_ONLY_REGEX = re.compile(r"^[a-zA-Z0-9]+$")
 
+ACCOUNT_USERNAME_REGEX = re.compile(r"^(?!\d+$)[a-zA-Z0-9]{6,20}$")
+
 LICENSE_NO_REGEX = re.compile(
     r"^[京津沪渝冀豫云辽黑湘皖鲁新苏浙赣鄂桂甘晋蒙陕吉闽贵粤青藏川宁琼使领][A-HJ-NP-Z][A-HJ-NP-Z0-9]{4,5}[A-HJ-NP-Z0-9挂学警港澳]$",
 )
@@ -54,42 +56,42 @@ def validate_ip_or_host(value: int | str) -> tuple[bool, str]:
             return False, f"获取HOST{value}失败: {e}"
 
 
-def check_vin(vin):
+def check_vin(vin: str) -> bool:
     # 定义对应值字典
     value_dict = {
-        '0': 0,
-        '1': 1,
-        '2': 2,
-        '3': 3,
-        '4': 4,
-        '5': 5,
-        '6': 6,
-        '7': 7,
-        '8': 8,
-        '9': 9,
-        'A': 1,
-        'B': 2,
-        'C': 3,
-        'D': 4,
-        'E': 5,
-        'F': 6,
-        'G': 7,
-        'H': 8,
-        'J': 1,
-        'K': 2,
-        'L': 3,
-        'M': 4,
-        'N': 5,
-        'P': 7,
-        'R': 9,
-        'S': 2,
-        'T': 3,
-        'U': 4,
-        'V': 5,
-        'W': 6,
-        'X': 7,
-        'Y': 8,
-        'Z': 9,
+        "0": 0,
+        "1": 1,
+        "2": 2,
+        "3": 3,
+        "4": 4,
+        "5": 5,
+        "6": 6,
+        "7": 7,
+        "8": 8,
+        "9": 9,
+        "A": 1,
+        "B": 2,
+        "C": 3,
+        "D": 4,
+        "E": 5,
+        "F": 6,
+        "G": 7,
+        "H": 8,
+        "J": 1,
+        "K": 2,
+        "L": 3,
+        "M": 4,
+        "N": 5,
+        "P": 7,
+        "R": 9,
+        "S": 2,
+        "T": 3,
+        "U": 4,
+        "V": 5,
+        "W": 6,
+        "X": 7,
+        "Y": 8,
+        "Z": 9,
     }
     # 定义加权值列表
     weight_list = [8, 7, 6, 5, 4, 3, 2, 10, 0, 9, 8, 7, 6, 5, 4, 3, 2]
@@ -104,8 +106,5 @@ def check_vin(vin):
         value = value_dict[vin[i].upper()] if vin[i].isalpha() else int(vin[i])
         total += value * weight_list[i]
     remainder = total % 11
-    if remainder == 10:
-        expected_check_digit = 'X'
-    else:
-        expected_check_digit = str(remainder)
+    expected_check_digit = "X" if remainder == 10 else str(remainder)
     return vin[8] == expected_check_digit

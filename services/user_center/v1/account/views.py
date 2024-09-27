@@ -1,6 +1,7 @@
 import uuid
+from typing import Annotated
 
-from fastapi import Depends, Request
+from fastapi import Query, Request
 
 from services.crud import (
     update,
@@ -11,10 +12,10 @@ from services.crud import (
 )
 from common.schemas import CRUDPager
 from common.responses import Resp, PageData
-from services.userCenter.v1.account import router
+from services.user_center.v1.account import router
 from storages.relational.models.account import Account
 from storages.relational.schema.account import AccountList, AccountCreate, AccountUpdate
-from services.userCenter.v1.account.schema import AccountFilterSchema
+from services.user_center.v1.account.schema import AccountFilterSchema
 
 
 @router.post(
@@ -35,7 +36,7 @@ async def create_account(request: Request, schema: AccountCreate) -> Resp[Accoun
 )
 async def get_account(
     request: Request,
-    filter_schema: AccountFilterSchema = Depends(AccountFilterSchema.as_query),  # type: ignore
+    filter_schema: Annotated[AccountFilterSchema, Query()],  # type: ignore
     pager: CRUDPager = pagination_factory(
         Account,
         {

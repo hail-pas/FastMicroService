@@ -17,7 +17,7 @@ from conf.config import local_configs
 from common.types import end_date_or_datetime, start_date_or_datetime
 from common.schemas import CRUDPager
 from common.pydantic import create_sub_fields_model
-from common.responses import Resp, PageData
+from common.responses import Resp
 from services.exceptions import ApiException
 from services.dependencies import paginate
 from storages.clickhouse.connection import get_clickhouse_client
@@ -46,7 +46,7 @@ async def get_all(
     pagination: CRUDPager,
     *args: Q,
     **kwargs: dict,
-) -> Resp[PageData]:  # type: ignore
+) -> tuple[list, int]:  # type: ignore
     queryset = queryset.filter(*args).filter(**kwargs).order_by(*pagination.order_by)
 
     search = pagination.search
@@ -70,9 +70,7 @@ async def get_all(
         queryset.offset(pagination.offset).limit(pagination.limit),
     )
     total = await queryset.count()
-    return Resp[PageData[list_schema]](  # type: ignore
-        data=PageData[list_schema](records=data, total_count=total, pager=pagination),  # type: ignore
-    )
+    return data, total
 
 
 async def obj_prefetch_fields(obj: Model, schema: type[PydanticModelType]) -> Model:
@@ -86,7 +84,6 @@ async def obj_prefetch_fields(obj: Model, schema: type[PydanticModelType]) -> Mo
             *fetch_fields,
             using_db=db,
         )
-
     return obj
 
 
@@ -225,10 +222,12 @@ async def update_obj(
 
 async def update_or_create_obj(
     db_model: type[ModelType],
-    data: dict = {},
+    data: dict | None = None,
     instance: Model | None = None,
     pk: str | uuid.UUID | int | None = None,
 ) -> Resp[PydanticModelType] | Model:
+    if not data:
+        data = {}
     if pk or instance:
         if not instance:
             pk_field = db_model._meta.pk_attr
@@ -327,12 +326,12 @@ class BaseFilterSchema(BaseModel):
     @property
     def operator_sql_template(self) -> dict:
         return {
-            ">": "{field} > '{value}'",
-            ">=": "{field} >= '{value}'",
-            "<": "{field} < '{value}'",
-            "<=": "{field} <= '{value}'",
-            "=": "{field} = '{value}'",
-            "!=": "{field} <> '{value}'",
+            "gt": "{field} > '{value}'",
+            "gte": "{field} >= '{value}'",
+            "lt": "{field} < '{value}'",
+            "lte": "{field} <= '{value}'",
+            "eq": "{field} = '{value}'",
+            "neq": "{field} <> '{value}'",
             "isnull": "{field} is null",
             "isnotnull": "{field} is not null",
             "in": "{field} in ({value})",
@@ -419,31 +418,25 @@ async def get_clickhouse_all(
     pager: CRUDPager,
 ) -> tuple[int, list]:
     selected_fields = pager.selected_fields
-    # if not selected_fields:
-    list_schema = pager.list_schema
-    selected_fields = model.model_fields.keys()
-    # else:
-    #     list_schema = create_sub_fields_model(
-    #         pager.list_schema,
-    #         selected_fields,
-    #     )
-    fields_query = ", ".join(selected_fields)
+    if not selected_fields:
+        selected_fields = set(model.model_fields.keys())
+        list_schema = pager.list_schema
+    else:
+        list_schema = create_sub_fields_model(
+            pager.list_schema,
+            selected_fields,
+        )
+
     field_prefix = ""
 
-    perm_filters = await request.user.get_role_perm_filter_kwargs()
+    perm_filters = await request.user.get_role_vehicle_perm_filter_kwargs()
 
-    if not pager.order_by and "start_date" in selected_fields:
-        pager.order_by = {
-            "start_date",
-        }
-
-    # if not pager.order_by and (model is AccumulatedVehicleStatistic or model is AccumulatedVehicleAlertStatistic):
-    #     pager.order_by = {"-start_date", }
-
-    if "vehicle_id" in selected_fields:
+    if perm_filters and "vehicle_id" in selected_fields:
         field_prefix = "l."
-        table_name = f"{table_name} as l inner join {local_configs.clickhouse.tables.statistic_prefix}.vehicle as v on l.vehicle_id = v.id"
-        fields_query = ", ".join([f"{field_prefix}{i}" for i in selected_fields])
+        table_name = (
+            f"{table_name} as l inner join {local_configs.clickhouse.tables.vehicle} as v on l.vehicle_id = v.id"
+        )
+    fields_query = ", ".join([f"{field_prefix}{i}" for i in selected_fields])
 
     query = "SELECT {fields_query} FROM " + table_name + " {where_query}"
 
@@ -456,26 +449,29 @@ async def get_clickhouse_all(
             ],
         )
         order_limit_query = f" ORDER BY {order_limit_query}"
+
     order_limit_query += f" LIMIT {pager.limit} OFFSET {pager.offset}"
 
     where_query = filter_schema.get_sql(request)
 
     if field_prefix:
-        perm_where_query = " AND v.deleted_at = 0"
+        perm_where_query = " "
         for k, v in perm_filters.items():
             if not v:
                 continue
             match k:
-                case "license_city_id__in":
-                    perm_where_query += f" AND v.license_city_id in ({','.join(map(str, v))})"
-                case "is_commercial":
-                    perm_where_query += f" AND v.is_commercial = {int(v)}"
-                case "vehicle_series_id__in":
-                    perm_where_query += f" AND v.vehicle_series_id in ({','.join(map(str, v))})"
+                case "release_city_id__in":
+                    perm_where_query += f" AND v.release_city_id in ({','.join(map(str, v))})"
+                case "energy_type__in":
+                    v = [f"'{i}'" for i in v]
+                    perm_where_query += f" AND v.energy_type in ({','.join(v)})"
+                case "device_type__in":
+                    v = [f"'{i}'" for i in v]
+                    perm_where_query += f" AND v.device_type in ({','.join(v)})"
 
         where_query += perm_where_query
 
-    # print(">" * 100, query.format(fields_query=fields_query, where_query=where_query) + order_limit_query)
+    print(">" * 100, query.format(fields_query=fields_query, where_query=where_query) + order_limit_query)
     async with get_clickhouse_client(
         url=local_configs.clickhouse.url,
         username=local_configs.clickhouse.username,

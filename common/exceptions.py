@@ -4,13 +4,13 @@ from common.responses import ResponseCodeEnum
 class ApiException(Exception):
     """非 0 的业务错误."""
 
-    code: ResponseCodeEnum = ResponseCodeEnum.failed
+    code: int = ResponseCodeEnum.failed.value
     message: str
 
     def __init__(
         self,
         message: str,
-        code: ResponseCodeEnum = ResponseCodeEnum.failed,
+        code: int = ResponseCodeEnum.failed.value,
     ) -> None:
         self.code = code
         self.message = message

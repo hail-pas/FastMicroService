@@ -28,6 +28,8 @@ async def api_exception_handler(
             message=exc.message,
             data=None,
         ).model_dump_json(),
+        # 小于0的为200状态下的自定义code
+        status_code=exc.code if exc.code > 0 else 200,
     )
 
 
@@ -47,6 +49,7 @@ async def unexpected_exception_handler(
             message=ResponseCodeEnum.internal_error.label,
             data=None,
         ).model_dump_json(),
+        status_code=500,
         headers=local_configs.server.cors.headers,
     )
 
@@ -66,6 +69,7 @@ async def http_exception_handler(
             message=exc.detail,
             data=None,
         ).model_dump_json(),
+        status_code=exc.status_code,
     )
 
 
@@ -94,6 +98,7 @@ async def validation_exception_handler(
             message=f"{field_name}: {message}",
             data=exc.errors(),  # {"data": exc.body, "errors": error_list},
         ).model_dump_json(),
+        status_code=422,
     )
 
 
@@ -102,10 +107,7 @@ def get_validation_text(exc: RequestValidationError, pyd: BaseModel) -> str:
     error_type = error["type"]
     ctx = error.get("ctx", {})
 
-    if len(error["loc"]):
-        field_name = error["loc"][0]
-    else:
-        field_name = ".".join([str(i) for i in error["loc"][1:]])
+    field_name = error["loc"][0] if len(error["loc"]) else ".".join([str(i) for i in error["loc"][1:]])
 
     if error_type in DirectValidateErrorMsgTemplates:
         field_name, message = DirectValidateErrorMsgTemplates[error_type]
@@ -133,6 +135,7 @@ async def custom_validation_error_handler(
             code=ResponseCodeEnum.failed,
             message=message,
         ).model_dump_json(),
+        status_code=422,
     )
 
 

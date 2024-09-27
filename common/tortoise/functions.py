@@ -17,6 +17,20 @@ class STAsWKBFunc(Function):
     database_func = CustomFunction(
         "ST_AsWKB",
         [
-            "name",
+            "field",
+        ],
+    )
+
+
+class Md5Func(Function):
+    """
+    md5
+    override: annotate(field_name=Md5Func("field_name"))
+    """
+
+    database_func = CustomFunction(
+        "md5",
+        [
+            "field",
         ],
     )

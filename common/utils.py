@@ -213,7 +213,7 @@ def seconds_to_readable_display(
 
     result = result[:level]
     if is_negative:
-        return "-"+"".join(result)
+        return "-" + "".join(result)
     else:
         return "".join(result)
 

@@ -1,7 +1,7 @@
-import logging
 import os
-import signal
 import sys
+import signal
+import logging
 import argparse
 import importlib
 from typing import Any
@@ -19,9 +19,11 @@ from common.fastapi import ServiceApi
 
 """FastAPI"""
 
+
 def handle_sigterm(signum, frame):
     logging.error(f"Worker (pid:{os.getpid()}) was sent SIGTERM!")
     sys.exit(0)
+
 
 # Function to set up loguru and standard logging
 def setup_logging():
@@ -30,6 +32,7 @@ def setup_logging():
 
     # Reconfigure the signal handling for the worker
     signal.signal(signal.SIGTERM, handle_sigterm)
+
 
 class FastApiApplication(gunicorn.app.base.BaseApplication):
     def __init__(self, app: ServiceApi, options: dict | None = None) -> None:
@@ -93,7 +96,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run FastAPI application with Gunicorn.")
     parser.add_argument(
         "app_path",
-        help="The FastAPI app to run, in the format 'module:app'. For example: 'services.userCenter.entrypoint.factory:user_center_api'",
+        help="The FastAPI app to run, in the format 'module:app'. For example: 'services.user_center.entrypoint.factory:user_center_api'",
     )
     args = parser.parse_args()
 
